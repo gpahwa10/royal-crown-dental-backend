@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 
 interface GenerateTokenPayload {
-  userId: string;
+  id: string;
   clinicId: string | null;
   roles: string[];
   isSuperAdmin: boolean;

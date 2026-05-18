@@ -22,6 +22,27 @@
       "when": 1779100000000,
       "tag": "0002_super_admins",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1779100080018,
+      "tag": "0003_glorious_shiva",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1779200000000,
+      "tag": "0004_employee_roles_and_timings",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1779101789147,
+      "tag": "0005_purple_crystal",
+      "breakpoints": true
     }
   ]
 }

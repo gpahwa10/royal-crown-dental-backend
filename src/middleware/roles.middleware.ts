@@ -1,4 +1,5 @@
 import { Response, NextFunction } from "express";
+import { hasPlatformAdminAccess } from "../modules/auth/auth.constants";
 import { AuthRequest } from "./auth.middleware";
 
 export const requireRoles = (
@@ -9,7 +10,7 @@ export const requireRoles = (
     res: Response,
     next: NextFunction
   ) => {
-    if (req.employee?.isSuperAdmin) {
+    if (hasPlatformAdminAccess(req.employee)) {
       return next();
     }
 

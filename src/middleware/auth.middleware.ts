@@ -1,5 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
+import { requireSuperAdmin } from "./superAdmin.middleware";
+import { hasSuperAdmins } from "modules/auth/auth.service";
 
 export interface AuthRequest extends Request {
     employee?: {
@@ -49,3 +51,19 @@ export const authenticate = (
       });
     }
   };
+
+  export const ensureSuperAdminCreateAccess = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+) => {
+    const superAdminsExist = await hasSuperAdmins();
+
+    if (!superAdminsExist) {
+        return next();
+    }
+
+    return authenticate(req, res, () =>
+        requireSuperAdmin(req, res, next)
+    );
+};

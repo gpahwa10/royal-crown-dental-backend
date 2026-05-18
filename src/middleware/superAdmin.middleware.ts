@@ -1,4 +1,5 @@
 import { Response, NextFunction } from "express";
+import { hasPlatformAdminAccess } from "../modules/auth/auth.constants";
 import { AuthRequest } from "./auth.middleware";
 
 export const requireSuperAdmin = (
@@ -6,10 +7,10 @@ export const requireSuperAdmin = (
   res: Response,
   next: NextFunction
 ) => {
-  if (!req.employee?.isSuperAdmin) {
+  if (!hasPlatformAdminAccess(req.employee)) {
     return res.status(403).json({
       success: false,
-      message: "Super admin access required"
+      message: "Super admin or Director access required"
     });
   }
 

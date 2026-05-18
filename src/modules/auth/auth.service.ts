@@ -1,12 +1,13 @@
 import { db } from "db/client";
+import { employeeRoleAssignments } from "db/schema/employeeRoleAssignments";
 import { employees } from "db/schema/employees";
 import { employeeRoles } from "db/schema/roles";
 import { superAdmins } from "db/schema/superAdmins";
-import { eq, count } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 import bcrypt from "bcrypt";
 import { generateToken } from "../../utils/generateToken";
 import {
-    EmployeeRole,
+    hasPlatformAdminAccess,
     SALT_ROUNDS,
 } from "./auth.constants";
 
@@ -34,17 +35,40 @@ const getRoleByName = async (name: string) => {
     return role;
 };
 
-const getRoleNameById = async (roleId: string) => {
-    const [role] = await db
+const getEmployeeRoleNames = async (employeeId: string) => {
+    const rows = await db
         .select({ name: employeeRoles.name })
-        .from(employeeRoles)
-        .where(eq(employeeRoles.id, roleId));
+        .from(employeeRoleAssignments)
+        .innerJoin(
+            employeeRoles,
+            eq(employeeRoleAssignments.roleId, employeeRoles.id)
+        )
+        .where(eq(employeeRoleAssignments.employeeId, employeeId));
 
-    if (!role) {
-        throw new Error("Employee role is not configured");
+    return rows.map((row) => row.name);
+};
+
+const assignRolesToEmployee = async (
+    employeeId: string,
+    roleNames: string[]
+) => {
+    const uniqueRoleNames = [...new Set(roleNames)];
+
+    for (const roleName of uniqueRoleNames) {
+        const role = await getRoleByName(roleName);
+        await db
+            .insert(employeeRoleAssignments)
+            .values({
+                employeeId,
+                roleId: role.id,
+            })
+            .onConflictDoNothing({
+                target: [
+                    employeeRoleAssignments.employeeId,
+                    employeeRoleAssignments.roleId,
+                ],
+            });
     }
-
-    return role.name;
 };
 
 const assertEmployeeCanLogin = (employee: EmployeeRecord) => {
@@ -73,25 +97,29 @@ const assertSuperAdminCanLogin = (admin: SuperAdminRecord) => {
 };
 
 const buildEmployeeToken = async (employee: EmployeeRecord) => {
-    const roleName = await getRoleNameById(employee.roleId);
+    const roles = await getEmployeeRoleNames(employee.id);
+
+    if (roles.length === 0) {
+        throw new Error("Employee has no roles assigned");
+    }
 
     return generateToken({
-        userId: employee.id,
+        id: employee.id,
         clinicId: employee.clinicId,
-        roles: [roleName],
+        roles,
         isSuperAdmin: false,
     });
 };
 
 export interface RegisterEmployeeInput {
     clinicId: string;
-    firstName: string;
-    lastName: string;
+    name: string;
     email: string;
     password: string;
-    phone: string;
+    phone?: string;
     designation: string;
-    role: EmployeeRole;
+    timings?: string;
+    roles: string[];
 }
 
 export interface CreateSuperAdminInput {
@@ -101,69 +129,39 @@ export interface CreateSuperAdminInput {
     password: string;
 }
 
-export const staffLogin = async (email: string, password: string) => {
+export const login = async (email: string, password: string) => {
     const [employee] = await db
         .select()
         .from(employees)
         .where(eq(employees.email, email));
 
-    if (!employee) {
-        throw new Error("Invalid credentials");
+    if (employee) {
+        assertEmployeeCanLogin(employee);
+
+        const isPasswordValid = await bcrypt.compare(
+            password,
+            employee.password
+        );
+        if (!isPasswordValid) {
+            throw new Error("Invalid credentials");
+        }
+
+        const roles = await getEmployeeRoleNames(employee.id);
+        const token = await buildEmployeeToken(employee);
+
+        return {
+            user: omitPassword(employee),
+            token,
+            roles,
+            isSuperAdmin: false,
+            hasPlatformAdminAccess: hasPlatformAdminAccess({
+                isSuperAdmin: false,
+                roles,
+            }),
+            clinicId: employee.clinicId,
+        };
     }
 
-    assertEmployeeCanLogin(employee);
-
-    const isPasswordValid = await bcrypt.compare(password, employee.password);
-    if (!isPasswordValid) {
-        throw new Error("Invalid credentials");
-    }
-
-    const token = await buildEmployeeToken(employee);
-
-    return {
-        employee: omitPassword(employee),
-        token,
-    };
-};
-
-const registerEmployee = async (input: RegisterEmployeeInput) => {
-    const role = await getRoleByName(input.role);
-
-    const [existing] = await db
-        .select({ id: employees.id })
-        .from(employees)
-        .where(eq(employees.email, input.email));
-
-    if (existing) {
-        throw new Error("An employee with this email already exists");
-    }
-
-    const hashedPassword = await hashPassword(input.password);
-
-    const [employee] = await db
-        .insert(employees)
-        .values({
-            clinicId: input.clinicId,
-            firstName: input.firstName,
-            lastName: input.lastName,
-            email: input.email,
-            password: hashedPassword,
-            phone: input.phone,
-            designation: input.designation,
-            roleId: role.id,
-        })
-        .returning();
-
-    return { employee: omitPassword(employee) };
-};
-
-export const registerStaff = (input: RegisterEmployeeInput) =>
-    registerEmployee(input);
-
-export const registerHR = (input: RegisterEmployeeInput) =>
-    registerEmployee(input);
-
-export const superAdminLogin = async (email: string, password: string) => {
     const [admin] = await db
         .select()
         .from(superAdmins)
@@ -181,17 +179,70 @@ export const superAdminLogin = async (email: string, password: string) => {
     }
 
     const token = generateToken({
-        userId: admin.id,
+        id: admin.id,
         clinicId: null,
         roles: [],
         isSuperAdmin: true,
     });
 
     return {
-        superAdmin: omitPassword(admin),
+        user: omitPassword(admin),
         token,
+        roles: [] as string[],
+        isSuperAdmin: true,
+        hasPlatformAdminAccess: true,
+        clinicId: null,
     };
 };
+
+const registerEmployee = async (input: RegisterEmployeeInput) => {
+    const uniqueRoles = [...new Set(input.roles)];
+
+    for (const roleName of uniqueRoles) {
+        await getRoleByName(roleName);
+    }
+
+    const [existing] = await db
+        .select({ id: employees.id })
+        .from(employees)
+        .where(eq(employees.email, input.email));
+
+    if (existing) {
+        throw new Error("An employee with this email already exists");
+    }
+
+    const hashedPassword = await hashPassword(input.password);
+
+    const [employee] = await db
+        .insert(employees)
+        .values({
+            clinicId: input.clinicId,
+            name: input.name,
+            email: input.email,
+            password: hashedPassword,
+            phone: input.phone ?? "",
+            designation: input.designation,
+            timings: input.timings,
+        })
+        .returning();
+
+    await assignRolesToEmployee(employee.id, uniqueRoles);
+
+    const roles = await getEmployeeRoleNames(employee.id);
+
+    return {
+        employee: {
+            ...omitPassword(employee),
+            roles,
+        },
+    };
+};
+
+export const registerStaff = (input: RegisterEmployeeInput) =>
+    registerEmployee(input);
+
+export const registerHR = (input: RegisterEmployeeInput) =>
+    registerEmployee(input);
 
 export const createSuperAdmin = async (input: CreateSuperAdminInput) => {
     const [existing] = await db
@@ -226,3 +277,5 @@ export const hasSuperAdmins = async () => {
 export const logout = async () => {
     return { message: "Logged out successfully" };
 };
+
+export { getEmployeeRoleNames, assignRolesToEmployee };

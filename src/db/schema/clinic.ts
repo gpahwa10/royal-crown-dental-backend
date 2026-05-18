@@ -1,8 +1,10 @@
-import { pgTable, uuid, varchar, timestamp, boolean, text } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, timestamp, boolean, text, integer } from "drizzle-orm/pg-core";
 export const clinics = pgTable("clinics", {
     id: uuid("id")
         .defaultRandom()
         .primaryKey(),
+
+    legacyClinicId: integer("legacy_clinic_id").unique(),
 
     clinicName: varchar("clinic_name", {
         length: 255

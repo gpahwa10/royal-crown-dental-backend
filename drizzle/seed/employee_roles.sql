@@ -5,5 +5,7 @@ INSERT INTO "employeeRoles" (name) VALUES
   ('HR Assistant'),
   ('Lab Technician'),
   ('Phlebotomist'),
-  ('Reception')
+  ('Reception'),
+  ('Super Admin'),
+  ('Director')
 ON CONFLICT (name) DO NOTHING;

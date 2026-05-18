@@ -1,0 +1,64 @@
+{
+  "clinics": [
+    {
+      "id": 1,
+      "name": "Jogeshwari East",
+      "address": "Gala No 106, Tahira Compounds, Ekta Society, Caves Rd, Subhash Nagar, Jogeshwari East, Mumbai, Maharashtra 400060",
+      "phone": "08850167183"
+    },
+    {
+      "id": 2,
+      "name": "Kandivali West",
+      "address": "Plot no 538, Mitra Dham Soc, Sector 5 Charkop, Kandivali West, Mumbai, Maharashtra 400067",
+      "phone": "09769024497"
+    },
+    {
+      "id": 3,
+      "name": "Bhayandar East",
+      "address": "Shop No 17/18, Rail View Society, Station Rd, Bhayandar East, Thane, Maharashtra 401105",
+      "phone": "09082305534"
+    },
+    {
+      "id": 4,
+      "name": "Vasai West",
+      "address": "Rahimabad CHSL, Navghar Manikpur, Vasai West, Maharashtra 401202",
+      "phone": "08652223440"
+    },
+    {
+      "id": 5,
+      "name": "Thane West",
+      "address": "3rd Floor, Shiv Anand Building, Tembhi Naka, Thane West, Maharashtra 400601",
+      "phone": "08454895568"
+    },
+    {
+      "id": 6,
+      "name": "Mira Road East",
+      "address": "Amarpali Building, Sector 11, Shanti Nagar, Mira Road East, Maharashtra 401107",
+      "phone": "09029025568"
+    },
+    {
+      "id": 7,
+      "name": "Nalasopara East",
+      "address": "Gala Nagar, Saraswati Apartment, Market, Nalasopara East, Maharashtra 401209",
+      "phone": "08433887324"
+    },
+    {
+      "id": 8,
+      "name": "Nalasopara West",
+      "address": "Sweta Apt, Nalasopara West, Maharashtra 401203",
+      "phone": "08454027324"
+    },
+    {
+      "id": 9,
+      "name": "Virar West",
+      "address": "Parikh Commercial Center, Bolinj, Virar West, Maharashtra 401303",
+      "phone": "07738787325"
+    },
+    {
+      "id": 10,
+      "name": "Virar East",
+      "address": "Mirza Nagar CHS Ltd, Station Rd, Virar East, Maharashtra 401305",
+      "phone": "07977137345"
+    }
+  ]
+}

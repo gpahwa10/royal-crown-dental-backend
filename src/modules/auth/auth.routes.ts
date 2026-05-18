@@ -4,17 +4,16 @@ import { requireHR } from "../../middleware/hr.middleware";
 import { requireSuperAdmin } from "../../middleware/superAdmin.middleware";
 import {
     createSuperAdminHandler,
+    loginHandler,
     logoutHandler,
     registerHRHandler,
     registerStaffHandler,
-    staffLoginHandler,
-    superAdminLoginHandler,
 } from "./auth.controller";
-import { ensureSuperAdminCreateAccess } from "./auth.middleware";
+import { ensureSuperAdminCreateAccess } from "../../middleware/auth.middleware";
 
 const router = Router();
 
-router.post("/staff/login", staffLoginHandler);
+router.post("/login", loginHandler);
 router.post(
     "/staff/register",
     authenticate,
@@ -29,7 +28,6 @@ router.post(
     registerHRHandler
 );
 
-router.post("/super-admin/login", superAdminLoginHandler);
 router.post(
     "/super-admin",
     ensureSuperAdminCreateAccess,

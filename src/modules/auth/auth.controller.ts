@@ -2,12 +2,12 @@ import { Response } from "express";
 import { AuthRequest } from "../../middleware/auth.middleware";
 import {
     createSuperAdmin,
+    login,
     logout,
     registerHR,
     registerStaff,
-    staffLogin,
-    superAdminLogin,
 } from "./auth.service";
+import { hasPlatformAdminAccess } from "./auth.constants";
 import {
     createSuperAdminSchema,
     loginSchema,
@@ -30,10 +30,10 @@ const handleError = (res: Response, error: unknown) => {
     return res.status(status).json({ success: false, message });
 };
 
-export const staffLoginHandler = async (req: AuthRequest, res: Response) => {
+export const loginHandler = async (req: AuthRequest, res: Response) => {
     try {
         const body = loginSchema.parse(req.body);
-        const result = await staffLogin(body.email, body.password);
+        const result = await login(body.email, body.password);
 
         return res.status(200).json({ success: true, data: result });
     } catch (error) {
@@ -48,7 +48,7 @@ export const registerStaffHandler = async (
     try {
         const body = registerStaffSchema.parse(req.body);
 
-        const clinicId = req.employee?.isSuperAdmin
+        const clinicId = hasPlatformAdminAccess(req.employee)
             ? body.clinicId
             : req.employee?.clinicId;
 
@@ -59,7 +59,11 @@ export const registerStaffHandler = async (
             });
         }
 
-        const result = await registerStaff({ ...body, clinicId });
+        const result = await registerStaff({
+            ...body,
+            clinicId,
+            phone: body.phone ?? "",
+        });
 
         return res.status(201).json({ success: true, data: result });
     } catch (error) {
@@ -71,23 +75,12 @@ export const registerHRHandler = async (req: AuthRequest, res: Response) => {
     try {
         const body = registerHRSchema.parse(req.body);
 
-        const result = await registerHR(body);
+        const result = await registerHR({
+            ...body,
+            phone: body.phone ?? "",
+        });
 
         return res.status(201).json({ success: true, data: result });
-    } catch (error) {
-        return handleError(res, error);
-    }
-};
-
-export const superAdminLoginHandler = async (
-    req: AuthRequest,
-    res: Response
-) => {
-    try {
-        const body = loginSchema.parse(req.body);
-        const result = await superAdminLogin(body.email, body.password);
-
-        return res.status(200).json({ success: true, data: result });
     } catch (error) {
         return handleError(res, error);
     }
