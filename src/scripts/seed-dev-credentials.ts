@@ -11,13 +11,13 @@ import { seedClinics } from "./seed/seed-clinics";
 
 export const DEV_CREDENTIALS = {
     superAdmin: {
-        email: "superadmin@dental.local",
+        email: "superadmin@yourvcare.com",
         password: "SuperAdmin@123",
         firstName: "Super",
         lastName: "Admin",
     },
     director: {
-        email: "director@dental.local",
+        email: "director@yourvcare.com",
         password: "Director@123",
         name: "Platform Director",
         phone: "9000000001",

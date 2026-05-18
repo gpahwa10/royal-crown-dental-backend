@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { requireSuperAdmin } from "./superAdmin.middleware";
-import { hasSuperAdmins } from "modules/auth/auth.service";
+import { hasSuperAdmins } from "../modules/auth/auth.service";
 
 export interface AuthRequest extends Request {
     employee?: {

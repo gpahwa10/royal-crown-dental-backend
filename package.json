@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node dist/server.js",
-    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "dev": "ts-node-dev --respawn --transpile-only -r dotenv/config src/server.ts",
     "seed:clinics": "ts-node-dev --transpile-only -r dotenv/config src/scripts/seed-clinics.ts",
     "seed:employees": "ts-node-dev --transpile-only -r dotenv/config src/scripts/seed-employees.ts",
     "seed:dev": "ts-node-dev --transpile-only -r dotenv/config src/scripts/seed-dev-credentials.ts",

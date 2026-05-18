@@ -1,8 +1,8 @@
-import { db } from "db/client";
-import { employeeRoleAssignments } from "db/schema/employeeRoleAssignments";
-import { employees } from "db/schema/employees";
-import { employeeRoles } from "db/schema/roles";
-import { superAdmins } from "db/schema/superAdmins";
+import { db } from "../../db/client";
+import { employeeRoleAssignments } from "../../db/schema/employeeRoleAssignments";
+import { employees } from "../../db/schema/employees";
+import { employeeRoles } from "../../db/schema/roles";
+import { superAdmins } from "../../db/schema/superAdmins";
 import { count, eq } from "drizzle-orm";
 import bcrypt from "bcrypt";
 import { generateToken } from "../../utils/generateToken";

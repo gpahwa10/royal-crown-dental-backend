@@ -15,9 +15,21 @@ import {
     registerStaffSchema,
 } from "./auth.validation";
 
+const getErrorMessage = (error: unknown) => {
+    if (!(error instanceof Error)) {
+        return "Something went wrong";
+    }
+
+    const cause = (error as Error & { cause?: Error }).cause;
+    if (cause?.message) {
+        return cause.message;
+    }
+
+    return error.message;
+};
+
 const handleError = (res: Response, error: unknown) => {
-    const message =
-        error instanceof Error ? error.message : "Something went wrong";
+    const message = getErrorMessage(error);
 
     const status =
         message === "Invalid credentials" ||
