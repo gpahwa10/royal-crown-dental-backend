@@ -1,0 +1,71 @@
+import { Router } from "express";
+import { authenticate } from "../../middleware/auth.middleware";
+import { requireHRRegistration } from "../../middleware/hrRegistration.middleware";
+import {
+    requireEmployeeListAccess,
+    requireStaffRegistration,
+} from "../../middleware/staffRegistration.middleware";
+import {
+    editEmployeeHandler,
+    listEmployeesHandler,
+    registerHRHandler,
+    registerStaffHandler,
+    suspendEmployeeHandler,
+    activateEmployeeHandler,
+    blockEmployeeHandler,
+} from "./employees.controller";
+
+const router = Router();
+
+// Staff: HR Head, HR Assistant, Director, or super admin
+router.post(
+    "/staff/register",
+    authenticate,
+    requireStaffRegistration,
+    registerStaffHandler
+);
+
+// HR: Director or super admin only
+router.post(
+    "/hr/register",
+    authenticate,
+    requireHRRegistration,
+    registerHRHandler
+);
+
+// List: HR Head, HR Assistant, Director, or super admin
+router.get(
+    "/list",
+    authenticate,
+    requireEmployeeListAccess,
+    listEmployeesHandler
+);
+
+router.put(
+    "/edit/:id",
+    authenticate,
+    requireStaffRegistration,
+    editEmployeeHandler 
+);
+
+router.put(
+    "/block/:id",
+    authenticate,
+    requireEmployeeListAccess,
+    blockEmployeeHandler
+);
+
+router.put(
+    "/suspend/:id",
+    authenticate,
+    requireStaffRegistration,
+    suspendEmployeeHandler
+);
+
+router.put(
+    "/activate/:id",
+    authenticate,
+    requireStaffRegistration,
+    activateEmployeeHandler
+);
+export default router;

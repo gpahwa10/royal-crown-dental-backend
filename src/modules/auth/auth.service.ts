@@ -1,11 +1,10 @@
 import { db } from "../../db/client";
-import { employeeRoleAssignments } from "../../db/schema/employeeRoleAssignments";
 import { employees } from "../../db/schema/employees";
-import { employeeRoles } from "../../db/schema/roles";
 import { superAdmins } from "../../db/schema/superAdmins";
 import { count, eq } from "drizzle-orm";
 import bcrypt from "bcrypt";
 import { generateToken } from "../../utils/generateToken";
+import { getEmployeeRoleNames } from "../employees/employees.service";
 import {
     hasPlatformAdminAccess,
     SALT_ROUNDS,
@@ -21,55 +20,6 @@ const omitPassword = <T extends { password: string }>(record: T) => {
 
 const hashPassword = (password: string) =>
     bcrypt.hash(password, SALT_ROUNDS);
-
-const getRoleByName = async (name: string) => {
-    const [role] = await db
-        .select()
-        .from(employeeRoles)
-        .where(eq(employeeRoles.name, name));
-
-    if (!role) {
-        throw new Error(`Role "${name}" is not configured`);
-    }
-
-    return role;
-};
-
-const getEmployeeRoleNames = async (employeeId: string) => {
-    const rows = await db
-        .select({ name: employeeRoles.name })
-        .from(employeeRoleAssignments)
-        .innerJoin(
-            employeeRoles,
-            eq(employeeRoleAssignments.roleId, employeeRoles.id)
-        )
-        .where(eq(employeeRoleAssignments.employeeId, employeeId));
-
-    return rows.map((row) => row.name);
-};
-
-const assignRolesToEmployee = async (
-    employeeId: string,
-    roleNames: string[]
-) => {
-    const uniqueRoleNames = [...new Set(roleNames)];
-
-    for (const roleName of uniqueRoleNames) {
-        const role = await getRoleByName(roleName);
-        await db
-            .insert(employeeRoleAssignments)
-            .values({
-                employeeId,
-                roleId: role.id,
-            })
-            .onConflictDoNothing({
-                target: [
-                    employeeRoleAssignments.employeeId,
-                    employeeRoleAssignments.roleId,
-                ],
-            });
-    }
-};
 
 const assertEmployeeCanLogin = (employee: EmployeeRecord) => {
     if (!employee.isActive) {
@@ -111,20 +61,8 @@ const buildEmployeeToken = async (employee: EmployeeRecord) => {
     });
 };
 
-export interface RegisterEmployeeInput {
-    clinicId: string;
-    name: string;
-    email: string;
-    password: string;
-    phone?: string;
-    designation: string;
-    timings?: string;
-    roles: string[];
-}
-
 export interface CreateSuperAdminInput {
-    firstName: string;
-    lastName: string;
+    name: string;
     email: string;
     password: string;
 }
@@ -195,55 +133,6 @@ export const login = async (email: string, password: string) => {
     };
 };
 
-const registerEmployee = async (input: RegisterEmployeeInput) => {
-    const uniqueRoles = [...new Set(input.roles)];
-
-    for (const roleName of uniqueRoles) {
-        await getRoleByName(roleName);
-    }
-
-    const [existing] = await db
-        .select({ id: employees.id })
-        .from(employees)
-        .where(eq(employees.email, input.email));
-
-    if (existing) {
-        throw new Error("An employee with this email already exists");
-    }
-
-    const hashedPassword = await hashPassword(input.password);
-
-    const [employee] = await db
-        .insert(employees)
-        .values({
-            clinicId: input.clinicId,
-            name: input.name,
-            email: input.email,
-            password: hashedPassword,
-            phone: input.phone ?? "",
-            designation: input.designation,
-            timings: input.timings,
-        })
-        .returning();
-
-    await assignRolesToEmployee(employee.id, uniqueRoles);
-
-    const roles = await getEmployeeRoleNames(employee.id);
-
-    return {
-        employee: {
-            ...omitPassword(employee),
-            roles,
-        },
-    };
-};
-
-export const registerStaff = (input: RegisterEmployeeInput) =>
-    registerEmployee(input);
-
-export const registerHR = (input: RegisterEmployeeInput) =>
-    registerEmployee(input);
-
 export const createSuperAdmin = async (input: CreateSuperAdminInput) => {
     const [existing] = await db
         .select({ id: superAdmins.id })
@@ -259,8 +148,7 @@ export const createSuperAdmin = async (input: CreateSuperAdminInput) => {
     const [admin] = await db
         .insert(superAdmins)
         .values({
-            firstName: input.firstName,
-            lastName: input.lastName,
+            name: input.name,
             email: input.email,
             password: hashedPassword,
         })
@@ -277,5 +165,3 @@ export const hasSuperAdmins = async () => {
 export const logout = async () => {
     return { message: "Logged out successfully" };
 };
-
-export { getEmployeeRoleNames, assignRolesToEmployee };

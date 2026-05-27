@@ -13,8 +13,7 @@ export const DEV_CREDENTIALS = {
     superAdmin: {
         email: "superadmin@yourvcare.com",
         password: "SuperAdmin@123",
-        firstName: "Super",
-        lastName: "Admin",
+        name: "Super Admin",
     },
     director: {
         email: "director@yourvcare.com",
@@ -61,8 +60,7 @@ const getRoleId = async (name: string) => {
 };
 
 const seedSuperAdmin = async () => {
-    const { email, password, firstName, lastName } =
-        DEV_CREDENTIALS.superAdmin;
+    const { email, password, name } = DEV_CREDENTIALS.superAdmin;
 
     const [existing] = await db
         .select({ id: superAdmins.id })
@@ -77,8 +75,7 @@ const seedSuperAdmin = async () => {
     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
     await db.insert(superAdmins).values({
-        firstName,
-        lastName,
+        name,
         email,
         password: hashedPassword,
     });

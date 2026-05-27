@@ -83,4 +83,26 @@ export const hasPlatformAdminAccess = (user?: {
     );
 };
 
+/** Super admin account or Director employee. */
+export const isSuperAdminOrDirector = hasPlatformAdminAccess;
+
+/** HR Head, HR Assistant, Director, or super admin — can create staff accounts. */
+export const canRegisterStaff = (user?: {
+    isSuperAdmin?: boolean;
+    roles?: string[];
+}) => {
+    if (!user) {
+        return false;
+    }
+    if (hasPlatformAdminAccess(user)) {
+        return true;
+    }
+    return (user.roles ?? []).some((role) =>
+        (HR_ROLES as readonly string[]).includes(role)
+    );
+};
+
+/** Director or super admin only — can create HR accounts. */
+export const canRegisterHR = hasPlatformAdminAccess;
+
 export const SALT_ROUNDS = 10;
