@@ -1,0 +1,310 @@
+#!/usr/bin/env bash
+# =============================================================================
+# Dental Backend — Clinics API cURLs
+# =============================================================================
+#
+# Base URL:  http://localhost:4000/api/clinics
+# Auth:      All routes require Authorization: Bearer <token>
+#
+# Setup:
+#   export BASE_URL="http://localhost:4000"
+#   export TOKEN="<jwt>"
+#   export CLINIC_ID="<clinic-uuid>"
+#
+# Authorization:
+#   GET  /, GET /:id     — any authenticated employee
+#   GET  /?includeInactive=true — Super Admin / Director only
+#   POST, PATCH, DELETE  — Super Admin / Director only
+#
+# Delete is a soft delete (sets isActive = false).
+# clinicCode and legacyClinicId are auto-generated on create if omitted.
+#
+# =============================================================================
+
+BASE_URL="${BASE_URL:-http://localhost:4000}"
+TOKEN="${TOKEN:-YOUR_JWT_TOKEN}"
+
+AUTH_HEADER="Authorization: Bearer ${TOKEN}"
+JSON_HEADER="Content-Type: application/json"
+CLINICS="${BASE_URL}/api/clinics"
+
+
+# =============================================================================
+# STEP 0 — LOGIN
+# =============================================================================
+
+curl -X POST "${BASE_URL}/api/auth/login" \
+  -H "${JSON_HEADER}" \
+  -d '{
+    "email": "admin@yourvcare.com",
+    "password": "YourPassword123"
+  }'
+
+
+# =============================================================================
+# 1 — LIST CLINICS
+# =============================================================================
+#
+# GET /api/clinics
+#
+# Query params (optional):
+#   search          — matches name, code, city, phone, email
+#   includeInactive — true | false (admin only; default returns active only)
+#
+# Response (200):
+# {
+#   "success": true,
+#   "message": "Clinics listed successfully",
+#   "data": [
+#     {
+#       "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+#       "legacyClinicId": 1,
+#       "clinicName": "Your VCare Andheri",
+#       "clinicCode": "CLINIC-001-YOUR-VCARE-ANDHERI",
+#       "email": "andheri@yourvcare.com",
+#       "phone": "9876543210",
+#       "address": "Shop 12, Link Road, Andheri West, Mumbai",
+#       "city": "Mumbai",
+#       "state": "Maharashtra",
+#       "country": "India",
+#       "pincode": "400053",
+#       "isActive": true,
+#       "createdAt": "2026-01-15T10:00:00.000Z",
+#       "updatedAt": "2026-01-15T10:00:00.000Z"
+#     },
+#     {
+#       "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+#       "legacyClinicId": 2,
+#       "clinicName": "Your VCare Thane",
+#       "clinicCode": "CLINIC-002-YOUR-VCARE-THANE",
+#       "email": "thane@yourvcare.com",
+#       "phone": "9123456789",
+#       "address": "Ground Floor, Ghodbunder Road, Thane West",
+#       "city": "Thane",
+#       "state": "Maharashtra",
+#       "country": "India",
+#       "pincode": "400607",
+#       "isActive": true,
+#       "createdAt": "2026-01-15T10:05:00.000Z",
+#       "updatedAt": "2026-01-15T10:05:00.000Z"
+#     }
+#   ]
+# }
+
+curl -X GET "${CLINICS}" \
+  -H "${AUTH_HEADER}"
+
+curl -X GET "${CLINICS}?search=mumbai" \
+  -H "${AUTH_HEADER}"
+
+curl -X GET "${CLINICS}?includeInactive=true" \
+  -H "${AUTH_HEADER}"
+
+
+# =============================================================================
+# 2 — GET CLINIC BY ID
+# =============================================================================
+#
+# GET /api/clinics/:id
+#
+# Employees can only fetch their own assigned clinic unless they are
+# Super Admin / Director.
+#
+# Response (200):
+# {
+#   "success": true,
+#   "data": {
+#     "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+#     "legacyClinicId": 1,
+#     "clinicName": "Your VCare Andheri",
+#     "clinicCode": "CLINIC-001-YOUR-VCARE-ANDHERI",
+#     "email": "andheri@yourvcare.com",
+#     "phone": "9876543210",
+#     "address": "Shop 12, Link Road, Andheri West, Mumbai",
+#     "city": "Mumbai",
+#     "state": "Maharashtra",
+#     "country": "India",
+#     "pincode": "400053",
+#     "isActive": true,
+#     "createdAt": "2026-01-15T10:00:00.000Z",
+#     "updatedAt": "2026-01-15T10:00:00.000Z"
+#   }
+# }
+#
+# Error (404):
+# { "success": false, "message": "Clinic not found" }
+
+curl -X GET "${CLINICS}/${CLINIC_ID}" \
+  -H "${AUTH_HEADER}"
+
+
+# =============================================================================
+# 3 — CREATE CLINIC
+# =============================================================================
+#
+# POST /api/clinics
+#
+# Super Admin / Director only.
+# clinicCode and legacyClinicId are optional — auto-generated when omitted.
+#
+# Request:
+# {
+#   "clinicName": "Your VCare Borivali",
+#   "email": "borivali@yourvcare.com",
+#   "phone": "9988776655",
+#   "address": "1st Floor, S V Road, Borivali West",
+#   "city": "Mumbai",
+#   "state": "Maharashtra",
+#   "country": "India",
+#   "pincode": "400092"
+# }
+#
+# Request (with explicit code):
+# {
+#   "clinicName": "Your VCare Borivali",
+#   "clinicCode": "YVC-BORIVALI",
+#   "legacyClinicId": 5,
+#   "email": "borivali@yourvcare.com",
+#   "phone": "9988776655",
+#   "address": "1st Floor, S V Road, Borivali West",
+#   "city": "Mumbai",
+#   "state": "Maharashtra",
+#   "country": "India",
+#   "pincode": "400092"
+# }
+#
+# Response (201):
+# {
+#   "success": true,
+#   "message": "Clinic created successfully",
+#   "data": {
+#     "id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+#     "legacyClinicId": 5,
+#     "clinicName": "Your VCare Borivali",
+#     "clinicCode": "CLINIC-005-YOUR-VCARE-BORIVALI",
+#     "email": "borivali@yourvcare.com",
+#     "phone": "9988776655",
+#     "address": "1st Floor, S V Road, Borivali West",
+#     "city": "Mumbai",
+#     "state": "Maharashtra",
+#     "country": "India",
+#     "pincode": "400092",
+#     "isActive": true,
+#     "createdAt": "2026-06-29T12:30:00.000Z",
+#     "updatedAt": "2026-06-29T12:30:00.000Z"
+#   }
+# }
+#
+# Error (409):
+# { "success": false, "message": "A clinic with this clinic code already exists" }
+#
+# Error (403):
+# { "success": false, "message": "Access denied. Platform admin access required" }
+
+curl -X POST "${CLINICS}" \
+  -H "${AUTH_HEADER}" \
+  -H "${JSON_HEADER}" \
+  -d '{
+    "clinicName": "Your VCare Borivali",
+    "email": "borivali@yourvcare.com",
+    "phone": "9988776655",
+    "address": "1st Floor, S V Road, Borivali West",
+    "city": "Mumbai",
+    "state": "Maharashtra",
+    "country": "India",
+    "pincode": "400092"
+  }'
+
+
+# =============================================================================
+# 4 — UPDATE CLINIC
+# =============================================================================
+#
+# PATCH /api/clinics/:id
+#
+# Super Admin / Director only.
+# At least one field is required.
+#
+# Request:
+# {
+#   "clinicName": "Your VCare Borivali West",
+#   "phone": "9900112233",
+#   "email": "borivali.west@yourvcare.com",
+#   "address": "2nd Floor, S V Road, Borivali West",
+#   "pincode": "400092",
+#   "isActive": true
+# }
+#
+# Response (200):
+# {
+#   "success": true,
+#   "message": "Clinic updated successfully",
+#   "data": {
+#     "id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+#     "legacyClinicId": 5,
+#     "clinicName": "Your VCare Borivali West",
+#     "clinicCode": "CLINIC-005-YOUR-VCARE-BORIVALI",
+#     "email": "borivali.west@yourvcare.com",
+#     "phone": "9900112233",
+#     "address": "2nd Floor, S V Road, Borivali West",
+#     "city": "Mumbai",
+#     "state": "Maharashtra",
+#     "country": "India",
+#     "pincode": "400092",
+#     "isActive": true,
+#     "createdAt": "2026-06-29T12:30:00.000Z",
+#     "updatedAt": "2026-06-29T12:45:00.000Z"
+#   }
+# }
+#
+# Error (404):
+# { "success": false, "message": "Clinic not found" }
+
+curl -X PATCH "${CLINICS}/${CLINIC_ID}" \
+  -H "${AUTH_HEADER}" \
+  -H "${JSON_HEADER}" \
+  -d '{
+    "clinicName": "Your VCare Borivali West",
+    "phone": "9900112233",
+    "email": "borivali.west@yourvcare.com",
+    "address": "2nd Floor, S V Road, Borivali West",
+    "isActive": true
+  }'
+
+
+# =============================================================================
+# 5 — DELETE CLINIC (soft delete)
+# =============================================================================
+#
+# DELETE /api/clinics/:id
+#
+# Super Admin / Director only.
+# Sets isActive = false. Does not remove the row from the database.
+#
+# Response (200):
+# {
+#   "success": true,
+#   "message": "Clinic deactivated successfully",
+#   "data": {
+#     "id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+#     "legacyClinicId": 5,
+#     "clinicName": "Your VCare Borivali West",
+#     "clinicCode": "CLINIC-005-YOUR-VCARE-BORIVALI",
+#     "email": "borivali.west@yourvcare.com",
+#     "phone": "9900112233",
+#     "address": "2nd Floor, S V Road, Borivali West",
+#     "city": "Mumbai",
+#     "state": "Maharashtra",
+#     "country": "India",
+#     "pincode": "400092",
+#     "isActive": false,
+#     "createdAt": "2026-06-29T12:30:00.000Z",
+#     "updatedAt": "2026-06-29T13:00:00.000Z"
+#   }
+# }
+#
+# Error (400):
+# { "success": false, "message": "Clinic is already inactive" }
+
+curl -X DELETE "${CLINICS}/${CLINIC_ID}" \
+  -H "${AUTH_HEADER}"
