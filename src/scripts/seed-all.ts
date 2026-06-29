@@ -8,6 +8,7 @@ const run = (script: string) => {
 
 const main = () => {
     run("seed:clinics");
+    run("seed:inventory");
     run("seed:employees");
     run("seed:dev");
     console.log("\nAll seeds completed.");

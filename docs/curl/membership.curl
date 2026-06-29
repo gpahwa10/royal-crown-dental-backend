@@ -1,0 +1,375 @@
+#!/usr/bin/env bash
+# =============================================================================
+# Dental Backend — Membership Plans & Patient Memberships API cURLs
+# =============================================================================
+#
+# Plans:       http://localhost:4000/api/membership-plans
+# Purchases:   http://localhost:4000/api/patient-memberships
+# Patients:    http://localhost:4000/api/patients
+#
+# Auth:         All routes require Authorization: Bearer <token>
+#
+# Setup:
+#   export BASE_URL="http://localhost:4000"
+#   export TOKEN="<jwt>"
+#   export PATIENT_ID="<patient-uuid>"
+#   export PLAN_ID="<membership-plan-uuid>"
+#   export BENEFIT_ID="<membership-benefit-uuid>"
+#   export PATIENT_MEMBERSHIP_ID="<patient-membership-uuid>"
+#
+# Membership plans are global — available at all clinics.
+# Benefits use serviceCode (e.g. CONSULTATION), not clinic-specific service IDs.
+#
+# Flow:
+#   Admin: create plan → add benefits
+#   Reception: purchase membership (invoice created, status pending_payment)
+#   Reception: POST /patient-memberships/:id/payment → activate on full payment
+#
+# Discount types: percentage | fixed | free
+# Membership status: pending_payment | active | expired | cancelled
+#
+# =============================================================================
+
+BASE_URL="${BASE_URL:-http://localhost:4000}"
+TOKEN="${TOKEN:-YOUR_JWT_TOKEN}"
+
+AUTH_HEADER="Authorization: Bearer ${TOKEN}"
+JSON_HEADER="Content-Type: application/json"
+PLANS="${BASE_URL}/api/membership-plans"
+MEMBERSHIPS="${BASE_URL}/api/patient-memberships"
+PATIENTS="${BASE_URL}/api/patients"
+
+
+# =============================================================================
+# STEP 0 — LOGIN
+# =============================================================================
+
+curl -X POST "${BASE_URL}/api/auth/login" \
+  -H "${JSON_HEADER}" \
+  -d '{
+    "email": "reception@yourvcare.com",
+    "password": "YourPassword123"
+  }'
+
+
+# =============================================================================
+# STEP 1 — CREATE MEMBERSHIP PLAN
+# =============================================================================
+#
+# POST /api/membership-plans
+#
+# Request:
+# {
+#   "planCode": "GOLD",
+#   "planName": "Gold Membership",
+#   "description": "12-month premium plan",
+#   "price": 5000,
+#   "validityDays": 365
+# }
+#
+# No clinicId required — plans are shared across all clinics.
+#
+# Response (201):
+# {
+#   "success": true,
+#   "data": {
+#     "id": "<uuid>",
+#     "planCode": "GOLD",
+#     "planName": "Gold Membership",
+#     "price": 5000,
+#     "validityDays": 365,
+#     "isActive": true,
+#     "clinicId": "<uuid>",
+#     "benefits": []
+#   }
+# }
+
+curl -X POST "${PLANS}" \
+  -H "${AUTH_HEADER}" \
+  -H "${JSON_HEADER}" \
+  -d '{
+    "planCode": "GOLD",
+    "planName": "Gold Membership",
+    "description": "12-month premium plan with consultation and radiograph benefits",
+    "price": 5000,
+    "validityDays": 365
+  }'
+
+
+# =============================================================================
+# STEP 2 — LIST MEMBERSHIP PLANS
+# =============================================================================
+#
+# GET /api/membership-plans
+#
+# Response (200):
+# { "success": true, "data": [ { ...plan with benefits[] } ] }
+
+curl -X GET "${PLANS}" \
+  -H "${AUTH_HEADER}"
+
+
+# =============================================================================
+# STEP 3 — GET MEMBERSHIP PLAN
+# =============================================================================
+#
+# GET /api/membership-plans/:id
+#
+# Response (200):
+# {
+#   "success": true,
+#   "data": {
+#     "id": "<uuid>",
+#     "planName": "Gold Membership",
+#     "benefits": [
+#       {
+#         "id": "<uuid>",
+#         "serviceCode": "CONSULTATION",
+#         "discountType": "percentage",
+#         "discountValue": 100
+#       }
+#     ]
+#   }
+# }
+
+curl -X GET "${PLANS}/${PLAN_ID}" \
+  -H "${AUTH_HEADER}"
+
+
+# =============================================================================
+# STEP 4 — ADD MEMBERSHIP BENEFITS
+# =============================================================================
+#
+# POST /api/membership-plans/:id/benefits
+#
+# Consultation — 100% discount (free):
+# {
+#   "serviceCode": "CONSULTATION",
+#   "discountType": "percentage",
+#   "discountValue": 100
+# }
+#
+# Scaling — 20% discount:
+# {
+#   "serviceCode": "SCALING",
+#   "discountType": "percentage",
+#   "discountValue": 20
+# }
+#
+# Radiograph — free service:
+# {
+#   "serviceCode": "XRAY",
+#   "discountType": "free",
+#   "discountValue": 0
+# }
+#
+# Fixed discount example:
+# {
+#   "serviceId": "<rct-service-uuid>",
+#   "discountType": "fixed",
+#   "discountValue": 1000
+# }
+#
+# Response (201):
+# { "success": true, "data": { ...benefit with service details } }
+
+curl -X POST "${PLANS}/${PLAN_ID}/benefits" \
+  -H "${AUTH_HEADER}" \
+  -H "${JSON_HEADER}" \
+  -d '{
+    "serviceCode": "CONSULTATION",
+    "discountType": "percentage",
+    "discountValue": 100
+  }'
+
+curl -X POST "${PLANS}/${PLAN_ID}/benefits" \
+  -H "${AUTH_HEADER}" \
+  -H "${JSON_HEADER}" \
+  -d '{
+    "serviceCode": "XRAY",
+    "discountType": "free",
+    "discountValue": 0
+  }'
+
+
+# =============================================================================
+# STEP 5 — UPDATE MEMBERSHIP BENEFIT
+# =============================================================================
+#
+# PATCH /api/membership-plans/:id/benefits/:benefitId
+#
+# Request:
+# { "discountType": "percentage", "discountValue": 50 }
+#
+# Response (200):
+# { "success": true, "data": { ...updated benefit } }
+
+curl -X PATCH "${PLANS}/${PLAN_ID}/benefits/${BENEFIT_ID}" \
+  -H "${AUTH_HEADER}" \
+  -H "${JSON_HEADER}" \
+  -d '{
+    "discountValue": 50
+  }'
+
+
+# =============================================================================
+# STEP 6 — UPDATE MEMBERSHIP PLAN
+# =============================================================================
+#
+# PATCH /api/membership-plans/:id
+#
+# Request:
+# { "price": 5500, "validityDays": 365, "isActive": true }
+#
+# Response (200):
+# { "success": true, "data": { ...updated plan } }
+
+curl -X PATCH "${PLANS}/${PLAN_ID}" \
+  -H "${AUTH_HEADER}" \
+  -H "${JSON_HEADER}" \
+  -d '{
+    "price": 5500
+  }'
+
+
+# =============================================================================
+# STEP 7 — PURCHASE MEMBERSHIP (creates invoice, does NOT activate)
+# =============================================================================
+#
+# POST /api/patient-memberships
+#
+# Request:
+# {
+#   "patientId": "<uuid>",
+#   "membershipPlanId": "<uuid>"
+# }
+#
+# Response (201):
+# {
+#   "success": true,
+#   "data": {
+#     "membership": {
+#       "id": "<uuid>",
+#       "patientId": "<uuid>",
+#       "membershipPlanId": "<uuid>",
+#       "invoiceId": "<uuid>",
+#       "status": "pending_payment",
+#       "purchaseDate": "2026-06-07T10:00:00.000Z",
+#       "startDate": null,
+#       "expiryDate": null
+#     },
+#     "invoice": {
+#       "invoice": {
+#         "id": "<uuid>",
+#         "invoiceNumber": "INV000042",
+#         "status": "pending",
+#         "grandTotal": 5500,
+#         "balanceAmount": 5500,
+#         "sourceType": "membership"
+#       },
+#       "items": [ ... ],
+#       "payments": []
+#     }
+#   }
+# }
+#
+# Errors:
+#   409 — Patient already has an active membership
+
+curl -X POST "${MEMBERSHIPS}" \
+  -H "${AUTH_HEADER}" \
+  -H "${JSON_HEADER}" \
+  -d '{
+    "patientId": "'"${PATIENT_ID}"'",
+    "membershipPlanId": "'"${PLAN_ID}"'"
+  }'
+
+
+# =============================================================================
+# STEP 8 — COMPLETE MEMBERSHIP PAYMENT (activate on full payment)
+# =============================================================================
+#
+# POST /api/patient-memberships/:id/payment
+#
+# Request:
+# {
+#   "amount": 5500,
+#   "paymentMethod": "upi",
+#   "paymentReference": "UPI123456789",
+#   "paymentDate": "2026-06-07T11:00:00.000Z",
+#   "notes": "Gold membership annual fee"
+# }
+#
+# paymentMethod: cash | upi | card | finance | bank_transfer | cheque
+#
+# Response (200):
+# {
+#   "success": true,
+#   "data": {
+#     "membership": {
+#       "id": "<uuid>",
+#       "status": "active",
+#       "startDate": "2026-06-07T11:00:00.000Z",
+#       "expiryDate": "2027-06-07T11:00:00.000Z"
+#     },
+#     "invoice": {
+#       "invoice": { "status": "paid", "balanceAmount": 0 },
+#       "payments": [ { "amount": 5500, "paymentMethod": "upi" } ]
+#     },
+#     "payment": { "id": "<uuid>", "amount": 5500 }
+#   }
+# }
+#
+# Partial payment leaves membership as pending_payment until balance is zero.
+
+curl -X POST "${MEMBERSHIPS}/${PATIENT_MEMBERSHIP_ID}/payment" \
+  -H "${AUTH_HEADER}" \
+  -H "${JSON_HEADER}" \
+  -d '{
+    "amount": 5500,
+    "paymentMethod": "upi",
+    "paymentReference": "UPI123456789",
+    "notes": "Gold membership annual fee"
+  }'
+
+
+# =============================================================================
+# STEP 9 — PATIENT DETAILS (membership + billing summary)
+# =============================================================================
+#
+# GET /api/patients/:id
+#
+# Response includes:
+#   membership        — active membership or null
+#   membershipHistory — all purchased memberships
+#   invoices          — full invoice details with items, payments, PDF file id
+#   outstandingBalance — sum of open invoice balances
+#   timeline          — membership + invoice + payment events
+
+curl -X GET "${PATIENTS}/${PATIENT_ID}" \
+  -H "${AUTH_HEADER}"
+
+
+# =============================================================================
+# STEP 10 — DELETE MEMBERSHIP BENEFIT
+# =============================================================================
+#
+# DELETE /api/membership-plans/:id/benefits/:benefitId
+#
+# Response (200):
+# { "success": true, "data": { "id": "<uuid>", "deleted": true } }
+
+curl -X DELETE "${PLANS}/${PLAN_ID}/benefits/${BENEFIT_ID}" \
+  -H "${AUTH_HEADER}"
+
+
+# =============================================================================
+# STEP 11 — DEACTIVATE MEMBERSHIP PLAN
+# =============================================================================
+#
+# DELETE /api/membership-plans/:id
+#
+# Soft-deactivates plan (isActive = false). Existing memberships unaffected.
+
+curl -X DELETE "${PLANS}/${PLAN_ID}" \
+  -H "${AUTH_HEADER}"

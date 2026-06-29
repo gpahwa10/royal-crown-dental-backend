@@ -1,0 +1,142 @@
+#!/usr/bin/env bash
+# =============================================================================
+# Dental Backend — Payments API cURLs
+# =============================================================================
+#
+# Payments:    http://localhost:4000/api/payments
+# Invoices:    http://localhost:4000/api/invoices
+#
+# Auth:         All routes require Authorization: Bearer <token>
+#
+# Setup:
+#   export BASE_URL="http://localhost:4000"
+#   export TOKEN="<jwt>"
+#   export INVOICE_ID="<invoice-uuid>"
+#   export PAYMENT_ID="<payment-uuid>"
+#
+# Note:
+#   Payments are created via POST /api/invoices/:id/payments (see billing.curl).
+#   Membership payments use POST /api/patient-memberships/:id/payment (see membership.curl).
+#   This file covers read-only payment endpoints.
+#
+# paymentMethod: cash | upi | card | finance | bank_transfer | cheque
+#
+# =============================================================================
+
+BASE_URL="${BASE_URL:-http://localhost:4000}"
+TOKEN="${TOKEN:-YOUR_JWT_TOKEN}"
+
+AUTH_HEADER="Authorization: Bearer ${TOKEN}"
+JSON_HEADER="Content-Type: application/json"
+PAYMENTS="${BASE_URL}/api/payments"
+INVOICES="${BASE_URL}/api/invoices"
+
+
+# =============================================================================
+# STEP 0 — LOGIN
+# =============================================================================
+
+curl -X POST "${BASE_URL}/api/auth/login" \
+  -H "${JSON_HEADER}" \
+  -d '{
+    "email": "reception@yourvcare.com",
+    "password": "YourPassword123"
+  }'
+
+
+# =============================================================================
+# STEP 1 — LIST PAYMENTS FOR INVOICE
+# =============================================================================
+#
+# GET /api/invoices/:id/payments
+#
+# Response (200):
+# {
+#   "success": true,
+#   "data": [
+#     {
+#       "id": "<uuid>",
+#       "invoiceId": "<uuid>",
+#       "amount": 200,
+#       "paymentMethod": "upi",
+#       "paymentReference": "UPI987654321",
+#       "paymentDate": "2026-06-07T12:30:00.000Z",
+#       "receivedBy": "<employee-uuid>",
+#       "notes": "Partial payment",
+#       "createdAt": "2026-06-07T12:30:00.000Z"
+#     },
+#     {
+#       "id": "<uuid>",
+#       "invoiceId": "<uuid>",
+#       "amount": 154,
+#       "paymentMethod": "cash",
+#       "paymentReference": null,
+#       "paymentDate": "2026-06-07T13:00:00.000Z",
+#       "receivedBy": "<employee-uuid>",
+#       "notes": "Balance cleared",
+#       "createdAt": "2026-06-07T13:00:00.000Z"
+#     }
+#   ]
+# }
+
+curl -X GET "${INVOICES}/${INVOICE_ID}/payments" \
+  -H "${AUTH_HEADER}"
+
+
+# =============================================================================
+# STEP 2 — GET PAYMENT BY ID
+# =============================================================================
+#
+# GET /api/payments/:id
+#
+# Response (200):
+# {
+#   "success": true,
+#   "data": {
+#     "payment": {
+#       "id": "<uuid>",
+#       "invoiceId": "<uuid>",
+#       "amount": 200,
+#       "paymentMethod": "upi",
+#       "paymentReference": "UPI987654321",
+#       "paymentDate": "2026-06-07T12:30:00.000Z",
+#       "receivedBy": "<employee-uuid>",
+#       "notes": "Partial payment",
+#       "createdAt": "2026-06-07T12:30:00.000Z"
+#     },
+#     "invoice": {
+#       "id": "<uuid>",
+#       "invoiceNumber": "INV000043",
+#       "patientId": "<uuid>",
+#       "status": "partially_paid",
+#       "grandTotal": 354,
+#       "amountPaid": 200,
+#       "balanceAmount": 154
+#     }
+#   }
+# }
+#
+# Response (404):
+# { "success": false, "message": "Payment not found" }
+
+curl -X GET "${PAYMENTS}/${PAYMENT_ID}" \
+  -H "${AUTH_HEADER}"
+
+
+# =============================================================================
+# STEP 3 — CREATE PAYMENT (reference — primary write endpoint)
+# =============================================================================
+#
+# POST /api/invoices/:id/payments
+#
+# See billing.curl for full request/response examples.
+# Multiple payments per invoice are supported.
+
+curl -X POST "${INVOICES}/${INVOICE_ID}/payments" \
+  -H "${AUTH_HEADER}" \
+  -H "${JSON_HEADER}" \
+  -d '{
+    "amount": 154,
+    "paymentMethod": "cash",
+    "notes": "Remaining balance"
+  }'

@@ -1,0 +1,562 @@
+import {
+    and,
+    count,
+    desc,
+    eq,
+    ilike,
+    or,
+} from "drizzle-orm";
+import { db } from "../../db/client";
+import { appointments } from "../../db/schema/appointments";
+import { clinics } from "../../db/schema/clinic";
+import { consultations } from "../../db/schema/consultations";
+import { patientConsents } from "../../db/schema/patientConsents";
+import { patientMedicalProfiles } from "../../db/schema/patientMedicalProfiles";
+import { patients } from "../../db/schema/patients";
+import { listConsultationsByPatientId } from "../consultations/consultations.service";
+import {
+    DentalLabOrderPatientSummary,
+    getDentalLabTimelineEventsForPatient,
+    listDentalLabOrdersByPatientId,
+} from "../dental-lab/dentalLab.service";
+import {
+    getFinancialTimelineEventsForPatient,
+    getPatientOutstandingBalance,
+    InvoiceDetails,
+    listInvoicesByPatientId,
+} from "../billing/billing.service";
+import {
+    getActivePatientMembership,
+    listPatientMemberships,
+} from "../membership/membership.service";
+import {
+    getLabRequestTimelineEventsForPatient,
+    LabRequestPatientSummary,
+    listLabRequestsByPatientId,
+} from "../lab-requests/labRequests.service";
+import {
+    listPrescriptionsByPatientId,
+    PrescriptionWithItems,
+} from "../prescriptions/prescriptions.service";
+import {
+    getClinicVisitTimelineEventsForPatient,
+    listClinicVisitsByPatientId,
+    ClinicVisitPatientSummary,
+} from "../clinic-visits/clinicVisit.service";
+import {
+    getRadiographTimelineEventsForPatient,
+    listRadiographsByPatientId,
+    RadiographPatientSummary,
+} from "../radiographs/radiographs.service";
+import {
+    DentalAnxietyLevel,
+    PatientType,
+    PregnancyStatus,
+} from "./patients.constants";
+import {
+    assertPatientClinicAccess,
+    generatePatientCode,
+    getPagination,
+    toDate,
+} from "./patients.utils";
+
+export interface RegisterPatientInput {
+    clinicId: string;
+    patientType: PatientType;
+    name: string;
+    phone: string;
+    email?: string;
+    gender: string;
+    dateOfBirth: Date | string;
+    address?: string;
+    emergencyContactName?: string;
+    emergencyContactPhone?: string;
+    emergencyContactRelation?: string;
+    allergies?: string[];
+    currentMedications?: string[];
+    chronicConditions?: string[];
+    pregnancyStatus: PregnancyStatus;
+    dentalAnxiety: DentalAnxietyLevel;
+    lastDentalVisit?: Date | string;
+    lastXrayDate?: Date | string;
+    primaryPhysicianName?: string;
+    primaryPhysicianPhone?: string;
+    initialChiefComplaint?: string;
+    treatmentConsentSigned: boolean;
+    privacyAccepted: boolean;
+}
+
+export interface ListPatientsOptions {
+    page?: number;
+    limit?: number;
+    search?: string;
+    clinicId?: string;
+    isBlackListed?: boolean;
+}
+
+export interface UpdatePatientInput {
+    name?: string;
+    phone?: string;
+    email?: string | null;
+    address?: string | null;
+    emergencyContactName?: string | null;
+    emergencyContactPhone?: string | null;
+    emergencyContactRelation?: string | null;
+    allergies?: string[];
+    currentMedications?: string[];
+    chronicConditions?: string[];
+    pregnancyStatus?: PregnancyStatus;
+    dentalAnxiety?: DentalAnxietyLevel;
+    lastDentalVisit?: Date | string | null;
+    lastXrayDate?: Date | string | null;
+    primaryPhysicianName?: string | null;
+    primaryPhysicianPhone?: string | null;
+    initialChiefComplaint?: string | null;
+}
+
+export type PatientRegistrationResult = {
+    patient: typeof patients.$inferSelect;
+    medicalProfile: typeof patientMedicalProfiles.$inferSelect;
+    consents: typeof patientConsents.$inferSelect;
+};
+
+export type PatientTimelineEvent = {
+    type: string;
+    date: string;
+};
+
+export type PatientDetailsResult = {
+    patient: typeof patients.$inferSelect;
+    medicalProfile: typeof patientMedicalProfiles.$inferSelect | null;
+    consents: typeof patientConsents.$inferSelect | null;
+    appointments: (typeof appointments.$inferSelect)[];
+    consultations: (typeof consultations.$inferSelect)[];
+    prescriptions: PrescriptionWithItems[];
+    labRequests: LabRequestPatientSummary[];
+    dentalLabOrders: DentalLabOrderPatientSummary[];
+    membership: Awaited<ReturnType<typeof getActivePatientMembership>>;
+    membershipHistory: Awaited<ReturnType<typeof listPatientMemberships>>;
+    invoices: InvoiceDetails[];
+    outstandingBalance: number;
+    radiographs: RadiographPatientSummary[];
+    clinicVisits: ClinicVisitPatientSummary[];
+    timeline: PatientTimelineEvent[];
+};
+
+const assertClinicExists = async (clinicId: string) => {
+    const [clinic] = await db
+        .select({ id: clinics.id, isActive: clinics.isActive })
+        .from(clinics)
+        .where(eq(clinics.id, clinicId));
+
+    if (!clinic) {
+        throw new Error("Clinic not found");
+    }
+
+    if (!clinic.isActive) {
+        throw new Error("Clinic is not active");
+    }
+};
+
+const assertDuplicatePhone = async (phone: string, clinicId: string) => {
+    const [existing] = await db
+        .select({ id: patients.id })
+        .from(patients)
+        .where(and(eq(patients.phone, phone), eq(patients.clinicId, clinicId)));
+
+    if (existing) {
+        throw new Error("A patient with this phone already exists in this clinic");
+    }
+};
+
+const getPatientRecord = async (id: string) => {
+    const [patient] = await db
+        .select()
+        .from(patients)
+        .where(eq(patients.id, id));
+
+    if (!patient) {
+        throw new Error("Patient not found");
+    }
+
+    return patient;
+};
+
+const getMedicalProfileByPatientId = async (patientId: string) => {
+    const [profile] = await db
+        .select()
+        .from(patientMedicalProfiles)
+        .where(eq(patientMedicalProfiles.patientId, patientId));
+
+    return profile ?? null;
+};
+
+const getConsentsByPatientId = async (patientId: string) => {
+    const [consent] = await db
+        .select()
+        .from(patientConsents)
+        .where(eq(patientConsents.patientId, patientId));
+
+    return consent ?? null;
+};
+
+const buildTimeline = (
+    patient: typeof patients.$inferSelect,
+    consent: typeof patientConsents.$inferSelect | null,
+    appointmentRows: (typeof appointments.$inferSelect)[],
+    consultationRows: (typeof consultations.$inferSelect)[],
+    labRequestEvents: PatientTimelineEvent[],
+    dentalLabEvents: PatientTimelineEvent[],
+    radiographEvents: PatientTimelineEvent[],
+    clinicVisitEvents: PatientTimelineEvent[],
+    financialEvents: PatientTimelineEvent[]
+): PatientTimelineEvent[] => {
+    const timeline: PatientTimelineEvent[] = [
+        {
+            type: "patient_registered",
+            date: patient.createdAt.toISOString(),
+        },
+    ];
+
+    if (consent?.acceptedAt) {
+        timeline.push({
+            type: "consent_signed",
+            date: consent.acceptedAt.toISOString(),
+        });
+    }
+
+    for (const appointment of appointmentRows) {
+        timeline.push({
+            type: "appointment_scheduled",
+            date: appointment.scheduledAt.toISOString(),
+        });
+    }
+
+    for (const consultation of consultationRows) {
+        timeline.push({
+            type: `consultation_${consultation.status}`,
+            date: consultation.createdAt.toISOString(),
+        });
+    }
+
+    timeline.push(...labRequestEvents);
+    timeline.push(...dentalLabEvents);
+    timeline.push(...radiographEvents);
+    timeline.push(...clinicVisitEvents);
+    timeline.push(...financialEvents);
+
+    return timeline.sort(
+        (left, right) =>
+            new Date(left.date).getTime() - new Date(right.date).getTime()
+    );
+};
+
+export const registerPatient = async (input: RegisterPatientInput) => {
+    await assertClinicExists(input.clinicId);
+    await assertDuplicatePhone(input.phone, input.clinicId);
+
+    if (input.email) {
+        const [existingEmail] = await db
+            .select({ id: patients.id })
+            .from(patients)
+            .where(eq(patients.email, input.email));
+
+        if (existingEmail) {
+            throw new Error("A patient with this email already exists");
+        }
+    }
+
+    const acceptedAt = new Date();
+
+    const result = await db.transaction(async (tx) => {
+        const patientCode = await generatePatientCode(tx);
+
+        const [patient] = await tx
+            .insert(patients)
+            .values({
+                patientCode,
+                clinicId: input.clinicId,
+                patientType: input.patientType,
+                name: input.name,
+                phone: input.phone,
+                email: input.email,
+                gender: input.gender,
+                dateOfBirth: toDate(input.dateOfBirth)!,
+                address: input.address,
+                emergencyContactName: input.emergencyContactName,
+                emergencyContactPhone: input.emergencyContactPhone,
+                emergencyContactRelation: input.emergencyContactRelation,
+            })
+            .returning();
+
+        const [medicalProfile] = await tx
+            .insert(patientMedicalProfiles)
+            .values({
+                patientId: patient.id,
+                allergies: input.allergies ?? [],
+                currentMedications: input.currentMedications ?? [],
+                chronicConditions: input.chronicConditions ?? [],
+                pregnancyStatus: input.pregnancyStatus,
+                dentalAnxiety: input.dentalAnxiety,
+                lastDentalVisit: toDate(input.lastDentalVisit),
+                lastXrayDate: toDate(input.lastXrayDate),
+                primaryPhysicianName: input.primaryPhysicianName,
+                primaryPhysicianPhone: input.primaryPhysicianPhone,
+                initialChiefComplaint: input.initialChiefComplaint,
+            })
+            .returning();
+
+        const [consents] = await tx
+            .insert(patientConsents)
+            .values({
+                patientId: patient.id,
+                treatmentConsentSigned: input.treatmentConsentSigned,
+                privacyAccepted: input.privacyAccepted,
+                acceptedAt,
+            })
+            .returning();
+
+        return { patient, medicalProfile, consents };
+    });
+
+    return result;
+};
+
+export const listPatients = async (options: ListPatientsOptions) => {
+    const { page, limit, offset } = getPagination(options.page, options.limit);
+    const filters = [];
+
+    if (options.clinicId) {
+        filters.push(eq(patients.clinicId, options.clinicId));
+    }
+
+    if (options.isBlackListed !== undefined) {
+        filters.push(eq(patients.isBlackListed, options.isBlackListed));
+    }
+
+    if (options.search) {
+        const term = `%${options.search}%`;
+        filters.push(
+            or(
+                ilike(patients.patientCode, term),
+                ilike(patients.name, term),
+                ilike(patients.phone, term),
+                ilike(patients.email, term)
+            )!
+        );
+    }
+
+    const whereClause = filters.length > 0 ? and(...filters) : undefined;
+
+    const [totalRow] = await db
+        .select({ total: count() })
+        .from(patients)
+        .where(whereClause);
+
+    const items = await db
+        .select()
+        .from(patients)
+        .where(whereClause)
+        .orderBy(desc(patients.createdAt))
+        .limit(limit)
+        .offset(offset);
+
+    return {
+        items,
+        total: totalRow?.total ?? 0,
+        page,
+        limit,
+    };
+};
+
+export const getPatientDetails = async (id: string) => {
+    const patient = await getPatientRecord(id);
+    const medicalProfile = await getMedicalProfileByPatientId(patient.id);
+    const consents = await getConsentsByPatientId(patient.id);
+
+    const appointmentRows = await db
+        .select()
+        .from(appointments)
+        .where(eq(appointments.patientId, patient.id))
+        .orderBy(desc(appointments.scheduledAt));
+
+    const consultationRows = await listConsultationsByPatientId(patient.id);
+    const prescriptionRows = await listPrescriptionsByPatientId(patient.id);
+    const labRequestRows = await listLabRequestsByPatientId(patient.id);
+    const labRequestTimelineEvents =
+        await getLabRequestTimelineEventsForPatient(patient.id);
+    const dentalLabOrderRows = await listDentalLabOrdersByPatientId(patient.id);
+    const dentalLabTimelineEvents =
+        await getDentalLabTimelineEventsForPatient(patient.id);
+    const radiographRows = await listRadiographsByPatientId(patient.id);
+    const radiographTimelineEvents =
+        await getRadiographTimelineEventsForPatient(patient.id);
+    const clinicVisitRows = await listClinicVisitsByPatientId(patient.id);
+    const clinicVisitTimelineEvents =
+        await getClinicVisitTimelineEventsForPatient(patient.id);
+    const financialTimelineEvents =
+        await getFinancialTimelineEventsForPatient(patient.id);
+    const activeMembership = await getActivePatientMembership(patient.id);
+    const membershipHistory = await listPatientMemberships(patient.id);
+    const invoiceRows = await listInvoicesByPatientId(patient.id);
+    const outstandingBalance = await getPatientOutstandingBalance(patient.id);
+
+    return {
+        patient,
+        medicalProfile,
+        consents,
+        appointments: appointmentRows,
+        consultations: consultationRows,
+        prescriptions: prescriptionRows,
+        labRequests: labRequestRows,
+        dentalLabOrders: dentalLabOrderRows,
+        membership: activeMembership,
+        membershipHistory,
+        invoices: invoiceRows,
+        outstandingBalance,
+        radiographs: radiographRows,
+        clinicVisits: clinicVisitRows,
+        timeline: buildTimeline(
+            patient,
+            consents,
+            appointmentRows,
+            consultationRows,
+            labRequestTimelineEvents,
+            dentalLabTimelineEvents,
+            radiographTimelineEvents,
+            clinicVisitTimelineEvents,
+            financialTimelineEvents
+        ),
+    } satisfies PatientDetailsResult;
+};
+
+export const updatePatient = async (id: string, input: UpdatePatientInput) => {
+    const patient = await getPatientRecord(id);
+
+    if (input.phone && input.phone !== patient.phone) {
+        await assertDuplicatePhone(input.phone, patient.clinicId);
+    }
+
+    if (input.email && input.email !== patient.email) {
+        const [existingEmail] = await db
+            .select({ id: patients.id })
+            .from(patients)
+            .where(eq(patients.email, input.email));
+
+        if (existingEmail && existingEmail.id !== patient.id) {
+            throw new Error("A patient with this email already exists");
+        }
+    }
+
+    const {
+        allergies,
+        currentMedications,
+        chronicConditions,
+        pregnancyStatus,
+        dentalAnxiety,
+        lastDentalVisit,
+        lastXrayDate,
+        primaryPhysicianName,
+        primaryPhysicianPhone,
+        initialChiefComplaint,
+        ...patientInput
+    } = input;
+
+    const hasMedicalUpdates =
+        allergies !== undefined ||
+        currentMedications !== undefined ||
+        chronicConditions !== undefined ||
+        pregnancyStatus !== undefined ||
+        dentalAnxiety !== undefined ||
+        lastDentalVisit !== undefined ||
+        lastXrayDate !== undefined ||
+        primaryPhysicianName !== undefined ||
+        primaryPhysicianPhone !== undefined ||
+        initialChiefComplaint !== undefined;
+
+    const result = await db.transaction(async (tx) => {
+        const [updatedPatient] = await tx
+            .update(patients)
+            .set({
+                ...patientInput,
+                updatedAt: new Date(),
+            })
+            .where(eq(patients.id, patient.id))
+            .returning();
+
+        let updatedMedicalProfile =
+            await getMedicalProfileByPatientId(patient.id);
+
+        if (hasMedicalUpdates) {
+            if (!updatedMedicalProfile) {
+                throw new Error("Medical profile not found");
+            }
+
+            const [profile] = await tx
+                .update(patientMedicalProfiles)
+                .set({
+                    ...(allergies !== undefined && { allergies }),
+                    ...(currentMedications !== undefined && {
+                        currentMedications,
+                    }),
+                    ...(chronicConditions !== undefined && {
+                        chronicConditions,
+                    }),
+                    ...(pregnancyStatus !== undefined && { pregnancyStatus }),
+                    ...(dentalAnxiety !== undefined && { dentalAnxiety }),
+                    ...(lastDentalVisit !== undefined && {
+                        lastDentalVisit: toDate(lastDentalVisit) ?? null,
+                    }),
+                    ...(lastXrayDate !== undefined && {
+                        lastXrayDate: toDate(lastXrayDate) ?? null,
+                    }),
+                    ...(primaryPhysicianName !== undefined && {
+                        primaryPhysicianName,
+                    }),
+                    ...(primaryPhysicianPhone !== undefined && {
+                        primaryPhysicianPhone,
+                    }),
+                    ...(initialChiefComplaint !== undefined && {
+                        initialChiefComplaint,
+                    }),
+                    updatedAt: new Date(),
+                })
+                .where(eq(patientMedicalProfiles.patientId, patient.id))
+                .returning();
+
+            updatedMedicalProfile = profile;
+        }
+
+        const consents = await getConsentsByPatientId(patient.id);
+
+        return {
+            patient: updatedPatient,
+            medicalProfile: updatedMedicalProfile,
+            consents,
+        };
+    });
+
+    return result;
+};
+
+export const blacklistPatient = async (
+    id: string,
+    isBlackListed: boolean,
+    reason?: string
+) => {
+    await getPatientRecord(id);
+
+    const [patient] = await db
+        .update(patients)
+        .set({
+            isBlackListed,
+            blackListedReason: isBlackListed ? reason ?? null : null,
+            updatedAt: new Date(),
+        })
+        .where(eq(patients.id, id))
+        .returning();
+
+    return patient;
+};
+
+export { assertPatientClinicAccess };

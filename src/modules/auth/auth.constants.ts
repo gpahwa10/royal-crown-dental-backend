@@ -105,4 +105,26 @@ export const canRegisterStaff = (user?: {
 /** Director or super admin only — can create HR accounts. */
 export const canRegisterHR = hasPlatformAdminAccess;
 
+/** Clinic roles that can list patients when creating or managing consultations. */
+export const CONSULTATION_PATIENT_LIST_ROLES = [
+    ROLE_DOCTOR,
+    ROLE_ASSISTANT,
+    ROLE_RECEPTION,
+] as const;
+
+export const canAccessConsultationPatientList = (user?: {
+    isSuperAdmin?: boolean;
+    roles?: string[];
+}) => {
+    if (!user) {
+        return false;
+    }
+    if (hasPlatformAdminAccess(user)) {
+        return true;
+    }
+    return (user.roles ?? []).some((role) =>
+        (CONSULTATION_PATIENT_LIST_ROLES as readonly string[]).includes(role)
+    );
+};
+
 export const SALT_ROUNDS = 10;
