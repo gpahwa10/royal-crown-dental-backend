@@ -1,7 +1,9 @@
 {
     "extends": "./tsconfig.json",
     "compilerOptions": {
-        "types": ["node"]
+        "types": ["node"],
+        "moduleResolution": "node"
     },
-    "exclude": ["drizzle.config.ts", "cron", "src/scripts"]
+    "include": ["src/**/*.ts"],
+    "exclude": ["src/scripts", "src/scripts/**"]
 }
