@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only -r dotenv/config src/server.ts",
     "seed:clinics": "ts-node-dev --transpile-only -r dotenv/config src/scripts/seed-clinics.ts",
@@ -29,9 +29,7 @@
     "jsonwebtoken": "^9.0.3",
     "pdfkit": "^0.19.1",
     "pg": "^8.20.0",
-    "zod": "^4.4.3"
-  },
-  "devDependencies": {
+    "typescript": "^5.8.3",
     "@types/bcrypt": "^6.0.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
@@ -39,7 +37,9 @@
     "@types/node": "^25.8.0",
     "@types/pdfkit": "^0.17.6",
     "@types/pg": "^8.20.0",
-    "ts-node-dev": "^2.0.0",
-    "typescript": "^5.8.3"
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "ts-node-dev": "^2.0.0"
   }
 }
