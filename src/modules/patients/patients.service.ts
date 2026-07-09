@@ -94,14 +94,20 @@ export interface ListPatientsOptions {
     isBlackListed?: boolean;
 }
 
-export interface UpdatePatientInput {
+export interface UpdatePatientBasicDetailsInput {
     name?: string;
     phone?: string;
     email?: string | null;
+    gender?: string;
+    dateOfBirth?: Date | string;
     address?: string | null;
     emergencyContactName?: string | null;
     emergencyContactPhone?: string | null;
     emergencyContactRelation?: string | null;
+    patientType?: PatientType;
+}
+
+export interface UpdatePatientMedicalProfileInput {
     allergies?: string[];
     currentMedications?: string[];
     chronicConditions?: string[];
@@ -113,6 +119,10 @@ export interface UpdatePatientInput {
     primaryPhysicianPhone?: string | null;
     initialChiefComplaint?: string | null;
 }
+
+export interface UpdatePatientInput
+    extends UpdatePatientBasicDetailsInput,
+        UpdatePatientMedicalProfileInput {}
 
 export type PatientRegistrationResult = {
     patient: typeof patients.$inferSelect;
@@ -430,7 +440,10 @@ export const getPatientDetails = async (id: string) => {
     } satisfies PatientDetailsResult;
 };
 
-export const updatePatient = async (id: string, input: UpdatePatientInput) => {
+export const updatePatientBasicDetails = async (
+    id: string,
+    input: UpdatePatientBasicDetailsInput
+) => {
     const patient = await getPatientRecord(id);
 
     if (input.phone && input.phone !== patient.phone) {
@@ -448,6 +461,96 @@ export const updatePatient = async (id: string, input: UpdatePatientInput) => {
         }
     }
 
+    const [updatedPatient] = await db
+        .update(patients)
+        .set({
+            ...(input.name !== undefined && { name: input.name }),
+            ...(input.phone !== undefined && { phone: input.phone }),
+            ...(input.email !== undefined && { email: input.email }),
+            ...(input.gender !== undefined && { gender: input.gender }),
+            ...(input.dateOfBirth !== undefined && {
+                dateOfBirth: toDate(input.dateOfBirth) ?? patient.dateOfBirth,
+            }),
+            ...(input.address !== undefined && { address: input.address }),
+            ...(input.emergencyContactName !== undefined && {
+                emergencyContactName: input.emergencyContactName,
+            }),
+            ...(input.emergencyContactPhone !== undefined && {
+                emergencyContactPhone: input.emergencyContactPhone,
+            }),
+            ...(input.emergencyContactRelation !== undefined && {
+                emergencyContactRelation: input.emergencyContactRelation,
+            }),
+            ...(input.patientType !== undefined && {
+                patientType: input.patientType,
+            }),
+            updatedAt: new Date(),
+        })
+        .where(eq(patients.id, patient.id))
+        .returning();
+
+    return {
+        patient: updatedPatient,
+        medicalProfile: await getMedicalProfileByPatientId(patient.id),
+        consents: await getConsentsByPatientId(patient.id),
+    };
+};
+
+export const updatePatientMedicalProfile = async (
+    id: string,
+    input: UpdatePatientMedicalProfileInput
+) => {
+    const patient = await getPatientRecord(id);
+    const medicalProfile = await getMedicalProfileByPatientId(patient.id);
+
+    if (!medicalProfile) {
+        throw new Error("Medical profile not found");
+    }
+
+    const [updatedMedicalProfile] = await db
+        .update(patientMedicalProfiles)
+        .set({
+            ...(input.allergies !== undefined && { allergies: input.allergies }),
+            ...(input.currentMedications !== undefined && {
+                currentMedications: input.currentMedications,
+            }),
+            ...(input.chronicConditions !== undefined && {
+                chronicConditions: input.chronicConditions,
+            }),
+            ...(input.pregnancyStatus !== undefined && {
+                pregnancyStatus: input.pregnancyStatus,
+            }),
+            ...(input.dentalAnxiety !== undefined && {
+                dentalAnxiety: input.dentalAnxiety,
+            }),
+            ...(input.lastDentalVisit !== undefined && {
+                lastDentalVisit: toDate(input.lastDentalVisit) ?? null,
+            }),
+            ...(input.lastXrayDate !== undefined && {
+                lastXrayDate: toDate(input.lastXrayDate) ?? null,
+            }),
+            ...(input.primaryPhysicianName !== undefined && {
+                primaryPhysicianName: input.primaryPhysicianName,
+            }),
+            ...(input.primaryPhysicianPhone !== undefined && {
+                primaryPhysicianPhone: input.primaryPhysicianPhone,
+            }),
+            ...(input.initialChiefComplaint !== undefined && {
+                initialChiefComplaint: input.initialChiefComplaint,
+            }),
+            updatedAt: new Date(),
+        })
+        .where(eq(patientMedicalProfiles.patientId, patient.id))
+        .returning();
+
+    return {
+        patient,
+        medicalProfile: updatedMedicalProfile,
+        consents: await getConsentsByPatientId(patient.id),
+    };
+};
+
+export const updatePatient = async (id: string, input: UpdatePatientInput) => {
     const {
         allergies,
         currentMedications,
@@ -459,9 +562,10 @@ export const updatePatient = async (id: string, input: UpdatePatientInput) => {
         primaryPhysicianName,
         primaryPhysicianPhone,
         initialChiefComplaint,
-        ...patientInput
+        ...basicInput
     } = input;
 
+    const hasBasicUpdates = Object.keys(basicInput).length > 0;
     const hasMedicalUpdates =
         allergies !== undefined ||
         currentMedications !== undefined ||
@@ -474,67 +578,30 @@ export const updatePatient = async (id: string, input: UpdatePatientInput) => {
         primaryPhysicianPhone !== undefined ||
         initialChiefComplaint !== undefined;
 
-    const result = await db.transaction(async (tx) => {
-        const [updatedPatient] = await tx
-            .update(patients)
-            .set({
-                ...patientInput,
-                updatedAt: new Date(),
-            })
-            .where(eq(patients.id, patient.id))
-            .returning();
+    let result: PatientRegistrationResult | null = null;
 
-        let updatedMedicalProfile =
-            await getMedicalProfileByPatientId(patient.id);
+    if (hasBasicUpdates) {
+        result = await updatePatientBasicDetails(id, basicInput);
+    }
 
-        if (hasMedicalUpdates) {
-            if (!updatedMedicalProfile) {
-                throw new Error("Medical profile not found");
-            }
+    if (hasMedicalUpdates) {
+        result = await updatePatientMedicalProfile(id, {
+            allergies,
+            currentMedications,
+            chronicConditions,
+            pregnancyStatus,
+            dentalAnxiety,
+            lastDentalVisit,
+            lastXrayDate,
+            primaryPhysicianName,
+            primaryPhysicianPhone,
+            initialChiefComplaint,
+        });
+    }
 
-            const [profile] = await tx
-                .update(patientMedicalProfiles)
-                .set({
-                    ...(allergies !== undefined && { allergies }),
-                    ...(currentMedications !== undefined && {
-                        currentMedications,
-                    }),
-                    ...(chronicConditions !== undefined && {
-                        chronicConditions,
-                    }),
-                    ...(pregnancyStatus !== undefined && { pregnancyStatus }),
-                    ...(dentalAnxiety !== undefined && { dentalAnxiety }),
-                    ...(lastDentalVisit !== undefined && {
-                        lastDentalVisit: toDate(lastDentalVisit) ?? null,
-                    }),
-                    ...(lastXrayDate !== undefined && {
-                        lastXrayDate: toDate(lastXrayDate) ?? null,
-                    }),
-                    ...(primaryPhysicianName !== undefined && {
-                        primaryPhysicianName,
-                    }),
-                    ...(primaryPhysicianPhone !== undefined && {
-                        primaryPhysicianPhone,
-                    }),
-                    ...(initialChiefComplaint !== undefined && {
-                        initialChiefComplaint,
-                    }),
-                    updatedAt: new Date(),
-                })
-                .where(eq(patientMedicalProfiles.patientId, patient.id))
-                .returning();
-
-            updatedMedicalProfile = profile;
-        }
-
-        const consents = await getConsentsByPatientId(patient.id);
-
-        return {
-            patient: updatedPatient,
-            medicalProfile: updatedMedicalProfile,
-            consents,
-        };
-    });
+    if (!result) {
+        throw new Error("At least one field is required");
+    }
 
     return result;
 };

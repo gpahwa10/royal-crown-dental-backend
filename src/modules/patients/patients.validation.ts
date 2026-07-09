@@ -18,6 +18,10 @@ export const patientIdParamSchema = z.object({
     id: z.uuid(),
 });
 
+export const patientIdRouteParamSchema = z.object({
+    patientId: z.uuid(),
+});
+
 export const clinicIdParamSchema = z.object({
     clinicId: z.uuid(),
 });
@@ -66,15 +70,52 @@ export const createPatientSchema = z
         }
     });
 
+export const updatePatientBasicDetailsSchema = z
+    .object({
+        name: z.string().trim().min(1).optional(),
+        phone: z.string().trim().min(1).max(20).optional(),
+        email: optionalEmail.nullable(),
+        gender: z.string().trim().min(1).max(50).optional(),
+        dateOfBirth: z.coerce.date().optional(),
+        address: z.string().trim().nullable().optional(),
+        emergencyContactName: z.string().trim().nullable().optional(),
+        emergencyContactPhone: z.string().trim().max(20).nullable().optional(),
+        emergencyContactRelation: z.string().trim().max(100).nullable().optional(),
+        patientType: z.enum(PATIENT_TYPES).optional(),
+    })
+    .refine((data) => Object.keys(data).length > 0, {
+        message: "At least one field is required",
+    });
+
+export const updatePatientMedicalProfileSchema = z
+    .object({
+        allergies: z.array(z.string().trim().min(1)).optional(),
+        currentMedications: z.array(z.string().trim().min(1)).optional(),
+        chronicConditions: z.array(z.string().trim().min(1)).optional(),
+        pregnancyStatus: z.enum(PREGNANCY_STATUSES).optional(),
+        dentalAnxiety: z.enum(DENTAL_ANXIETY_LEVELS).optional(),
+        lastDentalVisit: z.coerce.date().nullable().optional(),
+        lastXrayDate: z.coerce.date().nullable().optional(),
+        primaryPhysicianName: z.string().trim().nullable().optional(),
+        primaryPhysicianPhone: z.string().trim().max(20).nullable().optional(),
+        initialChiefComplaint: z.string().trim().nullable().optional(),
+    })
+    .refine((data) => Object.keys(data).length > 0, {
+        message: "At least one field is required",
+    });
+
 export const updatePatientSchema = z
     .object({
         name: z.string().trim().min(1).optional(),
         phone: z.string().trim().min(1).max(20).optional(),
         email: optionalEmail.nullable(),
+        gender: z.string().trim().min(1).max(50).optional(),
+        dateOfBirth: z.coerce.date().optional(),
         address: z.string().trim().nullable().optional(),
         emergencyContactName: z.string().trim().nullable().optional(),
         emergencyContactPhone: z.string().trim().max(20).nullable().optional(),
         emergencyContactRelation: z.string().trim().max(100).nullable().optional(),
+        patientType: z.enum(PATIENT_TYPES).optional(),
         allergies: z.array(z.string().trim().min(1)).optional(),
         currentMedications: z.array(z.string().trim().min(1)).optional(),
         chronicConditions: z.array(z.string().trim().min(1)).optional(),

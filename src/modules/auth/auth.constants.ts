@@ -86,6 +86,34 @@ export const hasPlatformAdminAccess = (user?: {
 /** Super admin account or Director employee. */
 export const isSuperAdminOrDirector = hasPlatformAdminAccess;
 
+/** Clinic roles that can view the employee/doctor list (in addition to HR and platform admins). */
+export const EMPLOYEE_LIST_VIEW_ROLES = [
+    ROLE_LAB_TECHNICIAN,
+    ROLE_PHLEBOTOMIST,
+] as const;
+
+/** HR Head, HR Assistant, Director, super admin, Lab Technician, or Phlebotomist — can list employees. */
+export const canListEmployees = (user?: {
+    isSuperAdmin?: boolean;
+    roles?: string[];
+}) => {
+    if (!user) {
+        return false;
+    }
+    if (hasPlatformAdminAccess(user)) {
+        return true;
+    }
+    const roles = user.roles ?? [];
+    return (
+        roles.some((role) =>
+            (HR_ROLES as readonly string[]).includes(role)
+        ) ||
+        roles.some((role) =>
+            (EMPLOYEE_LIST_VIEW_ROLES as readonly string[]).includes(role)
+        )
+    );
+};
+
 /** HR Head, HR Assistant, Director, or super admin — can create staff accounts. */
 export const canRegisterStaff = (user?: {
     isSuperAdmin?: boolean;

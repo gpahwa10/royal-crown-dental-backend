@@ -3,6 +3,7 @@ import { authenticate } from "../../middleware/auth.middleware";
 import { requireHRRegistration } from "../../middleware/hrRegistration.middleware";
 import {
     requireEmployeeListAccess,
+    requireEmployeeManagementAccess,
     requireStaffRegistration,
 } from "../../middleware/staffRegistration.middleware";
 import {
@@ -33,7 +34,7 @@ router.post(
     registerHRHandler
 );
 
-// List: HR Head, HR Assistant, Director, or super admin
+// List: HR Head, HR Assistant, Director, super admin, Lab Technician, or Phlebotomist
 router.get(
     "/list",
     authenticate,
@@ -51,7 +52,7 @@ router.put(
 router.put(
     "/block/:id",
     authenticate,
-    requireEmployeeListAccess,
+    requireEmployeeManagementAccess,
     blockEmployeeHandler
 );
 

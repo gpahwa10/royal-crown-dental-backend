@@ -8,6 +8,8 @@ import {
     listPatients,
     registerPatient,
     updatePatient,
+    updatePatientBasicDetails,
+    updatePatientMedicalProfile,
 } from "./patients.service";
 import { handleError } from "./patients.utils";
 import {
@@ -15,7 +17,10 @@ import {
     clinicIdParamSchema,
     createPatientSchema,
     patientIdParamSchema,
+    patientIdRouteParamSchema,
     patientListQuerySchema,
+    updatePatientBasicDetailsSchema,
+    updatePatientMedicalProfileSchema,
     updatePatientSchema,
 } from "./patients.validation";
 
@@ -144,6 +149,58 @@ export const updatePatientHandler = async (req: AuthRequest, res: Response) => {
 
         const result = await updatePatient(id, body);
         return res.status(200).json({ success: true, data: result });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
+export const updatePatientBasicDetailsHandler = async (
+    req: AuthRequest,
+    res: Response
+) => {
+    try {
+        const { patientId } = patientIdRouteParamSchema.parse(req.params);
+        const body = updatePatientBasicDetailsSchema.parse(req.body);
+
+        const existing = await getPatientDetails(patientId);
+        assertPatientClinicAccess(
+            existing.patient.clinicId,
+            hasPlatformAdminAccess(req.employee),
+            req.employee?.clinicId
+        );
+
+        const result = await updatePatientBasicDetails(patientId, body);
+        return res.status(200).json({
+            success: true,
+            message: "Patient basic details updated successfully",
+            data: result,
+        });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
+export const updatePatientMedicalProfileHandler = async (
+    req: AuthRequest,
+    res: Response
+) => {
+    try {
+        const { patientId } = patientIdRouteParamSchema.parse(req.params);
+        const body = updatePatientMedicalProfileSchema.parse(req.body);
+
+        const existing = await getPatientDetails(patientId);
+        assertPatientClinicAccess(
+            existing.patient.clinicId,
+            hasPlatformAdminAccess(req.employee),
+            req.employee?.clinicId
+        );
+
+        const result = await updatePatientMedicalProfile(patientId, body);
+        return res.status(200).json({
+            success: true,
+            message: "Patient medical profile updated successfully",
+            data: result,
+        });
     } catch (error) {
         return handleError(res, error);
     }
