@@ -6,7 +6,7 @@ import { employeeRoleAssignments } from "../db/schema/employeeRoleAssignments";
 import { employees } from "../db/schema/employees";
 import { employeeRoles } from "../db/schema/roles";
 import { superAdmins } from "../db/schema/superAdmins";
-import { ROLE_DIRECTOR, SALT_ROUNDS } from "../modules/auth/auth.constants";
+import { EMPLOYEE_ROLES, ROLE_DIRECTOR, SALT_ROUNDS } from "../modules/auth/auth.constants";
 import { seedClinics } from "./seed/seed-clinics";
 
 export const DEV_CREDENTIALS = {
@@ -25,17 +25,7 @@ export const DEV_CREDENTIALS = {
     },
 } as const;
 
-const EMPLOYEE_ROLE_NAMES = [
-    "Doctor",
-    "Assistant",
-    "HR Head",
-    "HR Assistant",
-    "Lab Technician",
-    "Phlebotomist",
-    "Reception",
-    "Super Admin",
-    "Director",
-] as const;
+const EMPLOYEE_ROLE_NAMES = [...EMPLOYEE_ROLES, "Super Admin"] as const;
 
 const seedEmployeeRoles = async () => {
     for (const name of EMPLOYEE_ROLE_NAMES) {

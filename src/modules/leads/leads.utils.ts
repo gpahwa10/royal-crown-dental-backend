@@ -1,6 +1,15 @@
 import { Response } from "express";
 import { ZodError } from "zod";
 
+/** Strip formatting and compare using the last 10 digits (Indian mobile). */
+export const normalizePhone = (phone: string): string => {
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length >= 10) {
+        return digits.slice(-10);
+    }
+    return digits;
+};
+
 export const getErrorMessage = (error: unknown) => {
     if (error instanceof ZodError) {
         return error.issues

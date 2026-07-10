@@ -18,6 +18,7 @@ import {
     listDentalLabOrdersByPatientId,
     recordCementation,
     removeDentalLabFile,
+    updateDentalLabOrder,
 } from "./dentalLab.service";
 import {
     assertDentalLabOrderClinicAccess,
@@ -33,6 +34,7 @@ import {
     dentalLabOrderListQuerySchema,
     patientIdParamSchema,
     recordCementationSchema,
+    updateDentalLabOrderSchema,
 } from "./dentalLab.validation";
 
 const resolveClinicId = (
@@ -146,6 +148,40 @@ export const getDentalLabOrderHandler = async (
         }
 
         return res.status(200).json({ success: true, data: details });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
+export const updateDentalLabOrderHandler = async (
+    req: AuthRequest,
+    res: Response
+) => {
+    try {
+        const { id } = dentalLabOrderIdParamSchema.parse(req.params);
+        const body = updateDentalLabOrderSchema.parse(req.body);
+
+        const existing = await getDentalLabOrderById(id);
+        assertDentalLabOrderClinicAccess(
+            existing.order.clinicId,
+            hasPlatformAdminAccess(req.employee),
+            req.employee?.clinicId
+        );
+
+        if (
+            shouldScopeToDoctor(req) &&
+            existing.order.measuredByDoctorId !== req.employee?.id &&
+            existing.order.cementationDoctorId !== req.employee?.id
+        ) {
+            return res.status(403).json({
+                success: false,
+                message:
+                    "You cannot access dental lab orders from another clinic",
+            });
+        }
+
+        const result = await updateDentalLabOrder(id, body);
+        return res.status(200).json({ success: true, data: result });
     } catch (error) {
         return handleError(res, error);
     }

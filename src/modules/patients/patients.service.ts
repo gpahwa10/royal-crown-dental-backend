@@ -192,6 +192,9 @@ const getPatientRecord = async (id: string) => {
     return patient;
 };
 
+/** Lightweight patient lookup for access checks and simple updates. */
+export const getPatientById = async (id: string) => getPatientRecord(id);
+
 const getMedicalProfileByPatientId = async (patientId: string) => {
     const [profile] = await db
         .select()
@@ -611,8 +614,6 @@ export const blacklistPatient = async (
     isBlackListed: boolean,
     reason?: string
 ) => {
-    await getPatientRecord(id);
-
     const [patient] = await db
         .update(patients)
         .set({
@@ -622,6 +623,10 @@ export const blacklistPatient = async (
         })
         .where(eq(patients.id, id))
         .returning();
+
+    if (!patient) {
+        throw new Error("Patient not found");
+    }
 
     return patient;
 };

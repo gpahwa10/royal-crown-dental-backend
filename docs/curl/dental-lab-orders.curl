@@ -166,6 +166,47 @@ curl -X GET "${DENTAL_LAB}/${ORDER_ID}" \
 
 
 # =============================================================================
+# STEP 3b — UPDATE DENTAL LAB ORDER
+# =============================================================================
+#
+# PATCH /api/dental-lab-orders/:id
+#
+# Editable while status is ordered or delivered.
+# After cementation_done, only notes, deliveredDate, cementationDate,
+# measuredByDoctorId, and cementationDoctorId can be updated.
+#
+# Setting deliveredDate on an ordered order moves it to delivered.
+# Clearing deliveredDate on a delivered order moves it back to ordered.
+#
+# Request (all fields optional, at least one required):
+# {
+#   "labName": "Updated Lab Name",
+#   "itemType": "crown",
+#   "toothNumber": "17",
+#   "shade": "A3",
+#   "description": "Updated description",
+#   "estimatedDeliveryDate": "2026-06-22T00:00:00.000Z",
+#   "orderedDate": "2026-06-07T10:00:00.000Z",
+#   "deliveredDate": "2026-06-18T14:30:00.000Z",
+#   "cementationDate": "2026-06-25T11:00:00.000Z",
+#   "measuredByDoctorId": "<doctor-uuid>",
+#   "cementationDoctorId": "<doctor-uuid>",
+#   "consultationId": null,
+#   "notes": "Updated notes"
+# }
+#
+# Response (200): same shape as GET /:id
+
+curl -X PATCH "${DENTAL_LAB}/${ORDER_ID}" \
+  -H "${JSON_HEADER}" \
+  -H "${AUTH_HEADER}" \
+  -d '{
+    "shade": "A3",
+    "notes": "Updated shade preference"
+  }'
+
+
+# =============================================================================
 # STEP 4 — ATTACH FILE (upload first via S3 module)
 # =============================================================================
 #
@@ -385,6 +426,8 @@ curl -X GET "${PATIENTS}/${PATIENT_ID}" \
 # | Appointment not found                | 404    |
 # | File not found                       | 404    |
 # | Invalid status transition            | 400    |
+# | After cementation is completed, only notes, delivery date, cementation date, and doctor fields can be updated | 400 |
+# | Delivery date cannot be cleared after cementation is completed | 400 |
 # | Duplicate attachment                 | 409    |
 # | Appointment already exists           | 409    |
 # | File does not belong to this patient | 400    |

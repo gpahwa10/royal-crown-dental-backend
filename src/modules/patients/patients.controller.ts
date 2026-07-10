@@ -4,6 +4,7 @@ import { hasPlatformAdminAccess } from "../auth/auth.constants";
 import {
     assertPatientClinicAccess,
     blacklistPatient,
+    getPatientById,
     getPatientDetails,
     listPatients,
     registerPatient,
@@ -214,9 +215,9 @@ export const blacklistPatientHandler = async (
         const { id } = patientIdParamSchema.parse(req.params);
         const body = blacklistPatientSchema.parse(req.body);
 
-        const existing = await getPatientDetails(id);
+        const existing = await getPatientById(id);
         assertPatientClinicAccess(
-            existing.patient.clinicId,
+            existing.clinicId,
             hasPlatformAdminAccess(req.employee),
             req.employee?.clinicId
         );

@@ -1,11 +1,14 @@
 INSERT INTO "employeeRoles" (name) VALUES
   ('Doctor'),
+  ('Clinic Head'),
+  ('Reception'),
   ('Assistant'),
-  ('HR Head'),
-  ('HR Assistant'),
+  ('Helper'),
   ('Lab Technician'),
   ('Phlebotomist'),
-  ('Reception'),
+  ('Inventory Manager'),
+  ('HR Head'),
+  ('HR Assistant'),
   ('Super Admin'),
   ('Director')
 ON CONFLICT (name) DO NOTHING;

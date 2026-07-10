@@ -81,6 +81,7 @@ export const listLabRequestsHandler = async (
             search: query.search,
             clinicId,
             doctorId: query.doctorId,
+            doctorName: query.doctorName,
             status: query.status,
         });
 

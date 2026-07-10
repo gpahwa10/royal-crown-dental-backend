@@ -42,6 +42,7 @@ export interface ListLabRequestsOptions {
     search?: string;
     clinicId?: string;
     doctorId?: string;
+    doctorName?: string;
     status?: LabRequestStatus;
 }
 
@@ -314,6 +315,10 @@ export const listLabRequests = async (options: ListLabRequestsOptions) => {
         filters.push(eq(labRequests.doctorId, options.doctorId));
     }
 
+    if (options.doctorName) {
+        filters.push(ilike(employees.name, `%${options.doctorName}%`));
+    }
+
     if (options.status) {
         filters.push(eq(labRequests.status, options.status));
     }
@@ -332,14 +337,23 @@ export const listLabRequests = async (options: ListLabRequestsOptions) => {
     const whereClause = filters.length > 0 ? and(...filters) : undefined;
 
     const baseQuery = db
-        .select({ request: labRequests })
+        .select({
+            request: labRequests,
+            patientName: patients.name,
+            clinicName: clinics.clinicName,
+            doctorName: employees.name,
+        })
         .from(labRequests)
-        .innerJoin(patients, eq(labRequests.patientId, patients.id));
+        .innerJoin(patients, eq(labRequests.patientId, patients.id))
+        .innerJoin(clinics, eq(labRequests.clinicId, clinics.id))
+        .innerJoin(employees, eq(labRequests.doctorId, employees.id));
 
     const [totalRow] = await db
         .select({ total: count() })
         .from(labRequests)
         .innerJoin(patients, eq(labRequests.patientId, patients.id))
+        .innerJoin(clinics, eq(labRequests.clinicId, clinics.id))
+        .innerJoin(employees, eq(labRequests.doctorId, employees.id))
         .where(whereClause);
 
     const rows = await baseQuery
@@ -352,11 +366,23 @@ export const listLabRequests = async (options: ListLabRequestsOptions) => {
     const testsByRequestId = await getTestsByLabRequestIds(requestIds);
     const reportsByRequestId = await getReportsByLabRequestIds(requestIds);
 
-    const items = rows.map((row) => ({
-        ...row.request,
-        tests: testsByRequestId.get(row.request.id) ?? [],
-        report: reportsByRequestId.get(row.request.id) ?? null,
-    }));
+    const items = rows.map((row) => {
+        const {
+            patientId: _patientId,
+            clinicId: _clinicId,
+            doctorId: _doctorId,
+            ...request
+        } = row.request;
+
+        return {
+            ...request,
+            patientName: row.patientName,
+            clinicName: row.clinicName,
+            doctorName: row.doctorName,
+            tests: testsByRequestId.get(row.request.id) ?? [],
+            report: reportsByRequestId.get(row.request.id) ?? null,
+        };
+    });
 
     return {
         items,

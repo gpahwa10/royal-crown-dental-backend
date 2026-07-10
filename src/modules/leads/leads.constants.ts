@@ -19,6 +19,13 @@ export const LEAD_STATUSES = [
 
 export const TERMINAL_LEAD_STATUSES = ["clinic_visited", "no_show"] as const;
 
+/** Active pipeline statuses — duplicate create requests reuse the existing row. */
+export const OPEN_LEAD_STATUSES = [
+    "new_query",
+    "follow_up",
+    "appointment_booked",
+] as const;
+
 export const APPOINTMENT_STATUSES = [
     "scheduled",
     "checked_in",

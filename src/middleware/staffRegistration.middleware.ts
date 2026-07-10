@@ -1,6 +1,6 @@
 import { NextFunction, Response } from "express";
 import {
-    canListEmployees,
+    canAccessEmployeeList,
     canRegisterStaff,
 } from "../modules/auth/auth.constants";
 import { AuthRequest } from "./auth.middleware";
@@ -23,17 +23,17 @@ export const requireStaffRegistration = requireHROrPlatformAdmin(
     "register staff"
 );
 
-/** HR, Director, super admin, Lab Technician, or Phlebotomist. */
+/** Full employee list or clinic-scoped doctor picker. */
 export const requireEmployeeListAccess = (
     req: AuthRequest,
     res: Response,
     next: NextFunction
 ) => {
-    if (!canListEmployees(req.employee)) {
+    if (!canAccessEmployeeList(req.employee)) {
         return res.status(403).json({
             success: false,
             message:
-                "HR, Director, Super admin, Lab Technician, or Phlebotomist access required to list employees",
+                "You do not have permission to list employees for this clinic",
         });
     }
 

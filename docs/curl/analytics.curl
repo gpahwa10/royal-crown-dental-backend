@@ -1,0 +1,125 @@
+#!/usr/bin/env bash
+# =============================================================================
+# Dental Backend — Analytics API cURLs (Phase 1)
+# =============================================================================
+#
+# Base URL:     http://localhost:4000
+# Auth:         All routes require Authorization: Bearer <token>
+#
+# Setup:
+#   export BASE_URL="http://localhost:4000"
+#   export TOKEN="<jwt>"
+#   export CLINIC_ID="<clinic-uuid>"
+#   export DOCTOR_ID="<doctor-employee-uuid>"
+#
+# Common query params (all endpoints):
+#   clinicId?          = UUID (omit for all clinics if Director/Super Admin)
+#   doctorId?          = UUID (omit to auto-scope to self for doctors)
+#   startDate?,endDate?= ISO 8601 (used when datePreset=custom)
+#   datePreset         = today|yesterday|this_week|last_week|this_month|last_month|this_year|custom
+#   groupBy?           = day|week|month|quarter|year
+#   comparisonPeriod?  = previous_period|previous_year|none
+#
+# Example:
+#   datePreset=this_month&comparisonPeriod=previous_period&groupBy=day
+#
+# =============================================================================
+
+BASE_URL="${BASE_URL:-http://localhost:4000}"
+TOKEN="${TOKEN:-YOUR_JWT_TOKEN}"
+
+AUTH_HEADER="Authorization: Bearer ${TOKEN}"
+JSON_HEADER="Content-Type: application/json"
+
+ANALYTICS="${BASE_URL}/api/analytics"
+
+# =============================================================================
+# DASHBOARD
+# =============================================================================
+
+# 1) Global dashboard (Director / Super Admin only)
+curl -X GET "${ANALYTICS}/dashboard?datePreset=this_month&comparisonPeriod=previous_period&groupBy=day" \
+  -H "${AUTH_HEADER}"
+
+# 2) Single clinic dashboard (all roles, auto-scoped for non-platform users)
+curl -X GET "${ANALYTICS}/dashboard?clinicId=${CLINIC_ID}&datePreset=this_month&comparisonPeriod=previous_period" \
+  -H "${AUTH_HEADER}"
+
+# 3) Doctor-specific dashboard
+curl -X GET "${ANALYTICS}/dashboard?clinicId=${CLINIC_ID}&doctorId=${DOCTOR_ID}&datePreset=this_week" \
+  -H "${AUTH_HEADER}"
+
+# =============================================================================
+# REVENUE ANALYTICS
+# =============================================================================
+
+# 4) Revenue — this month vs previous month (all clinics, Director only)
+curl -X GET "${ANALYTICS}/revenue?datePreset=this_month&comparisonPeriod=previous_period&groupBy=day" \
+  -H "${AUTH_HEADER}"
+
+# 5) Revenue — single clinic, custom date range
+START_DATE="2024-01-01T00:00:00.000Z"
+END_DATE="2024-01-31T23:59:59.999Z"
+curl -X GET "${ANALYTICS}/revenue?clinicId=${CLINIC_ID}&datePreset=custom&startDate=${START_DATE}&endDate=${END_DATE}&comparisonPeriod=previous_year&groupBy=week" \
+  -H "${AUTH_HEADER}"
+
+# =============================================================================
+# PAYMENTS ANALYTICS
+# =============================================================================
+
+# 6) Payments — method breakdown for this month
+curl -X GET "${ANALYTICS}/payments?clinicId=${CLINIC_ID}&datePreset=this_month&comparisonPeriod=previous_period" \
+  -H "${AUTH_HEADER}"
+
+# 7) Payments — yesterday (cash counter view)
+curl -X GET "${ANALYTICS}/payments?clinicId=${CLINIC_ID}&datePreset=yesterday&comparisonPeriod=none" \
+  -H "${AUTH_HEADER}"
+
+# =============================================================================
+# PATIENT ANALYTICS
+# =============================================================================
+
+# 8) Patients — this year by month
+curl -X GET "${ANALYTICS}/patients?clinicId=${CLINIC_ID}&datePreset=this_year&comparisonPeriod=previous_year&groupBy=month" \
+  -H "${AUTH_HEADER}"
+
+# 9) Patients — custom range for a specific doctor
+curl -X GET "${ANALYTICS}/patients?clinicId=${CLINIC_ID}&doctorId=${DOCTOR_ID}&datePreset=custom&startDate=${START_DATE}&endDate=${END_DATE}&comparisonPeriod=previous_period" \
+  -H "${AUTH_HEADER}"
+
+# =============================================================================
+# LEADS ANALYTICS
+# =============================================================================
+
+# 10) Leads — this month funnel
+curl -X GET "${ANALYTICS}/leads?clinicId=${CLINIC_ID}&datePreset=this_month&comparisonPeriod=previous_period&groupBy=week" \
+  -H "${AUTH_HEADER}"
+
+# 11) Leads — last week vs previous week
+curl -X GET "${ANALYTICS}/leads?clinicId=${CLINIC_ID}&datePreset=last_week&comparisonPeriod=previous_period" \
+  -H "${AUTH_HEADER}"
+
+# =============================================================================
+# APPOINTMENTS ANALYTICS
+# =============================================================================
+
+# 12) Appointments — today (front-desk snapshot)
+curl -X GET "${ANALYTICS}/appointments?clinicId=${CLINIC_ID}&datePreset=today&comparisonPeriod=none" \
+  -H "${AUTH_HEADER}"
+
+# 13) Appointments — this week by day
+curl -X GET "${ANALYTICS}/appointments?clinicId=${CLINIC_ID}&datePreset=this_week&comparisonPeriod=previous_period&groupBy=day" \
+  -H "${AUTH_HEADER}"
+
+# =============================================================================
+# ALERTS
+# =============================================================================
+
+# 14) Alerts — all clinics (Director / Super Admin)
+curl -X GET "${ANALYTICS}/alerts?datePreset=this_month&comparisonPeriod=none" \
+  -H "${AUTH_HEADER}"
+
+# 15) Alerts — single clinic
+curl -X GET "${ANALYTICS}/alerts?clinicId=${CLINIC_ID}&datePreset=this_week&comparisonPeriod=none" \
+  -H "${AUTH_HEADER}"
+

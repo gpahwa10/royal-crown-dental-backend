@@ -13,6 +13,46 @@ const optionalUuid = z.preprocess(
     z.uuid().optional()
 );
 
+/** Accepts role name, designation label, role UUID, or { name | id } objects. */
+export const roleInputSchema = z.preprocess(
+    (value) => {
+        if (typeof value === "string") {
+            return value.trim();
+        }
+
+        if (typeof value === "object" && value !== null) {
+            const record = value as Record<string, unknown>;
+            if (typeof record.name === "string") {
+                return record.name.trim();
+            }
+            if (typeof record.id === "string") {
+                return record.id.trim();
+            }
+        }
+
+        return value;
+    },
+    z.string().min(1)
+);
+
+const expandDesignationRoles = (roles: string[] | undefined) => {
+    if (!roles) {
+        return undefined;
+    }
+
+    const expanded: string[] = [];
+
+    for (const role of roles) {
+        if (role in DESIGNATION_TO_ROLES) {
+            expanded.push(...DESIGNATION_TO_ROLES[role]);
+        } else {
+            expanded.push(role);
+        }
+    }
+
+    return [...new Set(expanded)];
+};
+
 const registerBaseSchema = z.object({
     clinicId: optionalUuid,
     name: z.string().min(1),
@@ -84,6 +124,8 @@ export const listEmployeesQuerySchema = z.object({
     page: z.coerce.number().int().min(1).default(1),
     limit: z.coerce.number().int().min(1).max(100).default(10),
     clinicId: z.uuid().optional(),
+    role: z.string().trim().optional(),
+    status: z.enum(["active", "inactive", "all"]).optional(),
 });
 
 export const editEmployeeParamsSchema = z.object({
@@ -97,7 +139,11 @@ export const editEmployeeSchema = z
         phone: z.string().min(1).optional(),
         designation: z.string().min(1).optional(),
         timings: z.string().min(1).optional(),
-        roles: z.array(z.enum(CLINIC_STAFF_ROLES)).min(1).optional(),
+        roles: z
+            .array(roleInputSchema)
+            .min(1)
+            .optional()
+            .transform(expandDesignationRoles),
     })
     .refine(
         (data) =>

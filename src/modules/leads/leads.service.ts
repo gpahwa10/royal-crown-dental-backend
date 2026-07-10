@@ -6,6 +6,7 @@ import {
     ilike,
     inArray,
     or,
+    sql,
 } from "drizzle-orm";
 import { db } from "../../db/client";
 import { appointments } from "../../db/schema/appointments";
@@ -20,6 +21,7 @@ import {
     AppointmentStatus,
     LeadSource,
     LeadStatus,
+    OPEN_LEAD_STATUSES,
     PUBLIC_INTAKE_DEFAULT_NOTES,
 } from "./leads.constants";
 import { generateAppointmentCode } from "../appointments/appointments.utils";
@@ -27,6 +29,7 @@ import {
     buildPaginationMeta,
     buildScheduledAt,
     getPagination,
+    normalizePhone,
 } from "./leads.utils";
 
 export interface CreateLeadInput {
@@ -288,11 +291,68 @@ const syncAppointmentStatusForLeadStatus = async (
         );
 };
 
+const phoneMatchesNormalized = (normalizedPhone: string) => {
+    const digitsOnly = sql`REGEXP_REPLACE(${leads.phone}, '[^0-9]', '', 'g')`;
+
+    if (normalizedPhone.length >= 10) {
+        return sql`RIGHT(${digitsOnly}, 10) = ${normalizedPhone}`;
+    }
+
+    return sql`${digitsOnly} = ${normalizedPhone}`;
+};
+
+const findOpenLeadByClinicAndPhone = async (
+    clinicId: string,
+    normalizedPhone: string
+) => {
+    const [lead] = await db
+        .select()
+        .from(leads)
+        .where(
+            and(
+                eq(leads.clinicId, clinicId),
+                inArray(leads.status, [...OPEN_LEAD_STATUSES]),
+                phoneMatchesNormalized(normalizedPhone)
+            )
+        )
+        .orderBy(desc(leads.createdAt))
+        .limit(1);
+
+    return lead;
+};
+
 export const createLead = async (input: CreateLeadInput) => {
     await assertClinicExists(input.clinicId);
 
     if (input.patientId) {
         await assertPatientExists(input.patientId);
+    }
+
+    const normalizedPhone = normalizePhone(input.phone);
+    const existingOpenLead = await findOpenLeadByClinicAndPhone(
+        input.clinicId,
+        normalizedPhone
+    );
+
+    if (existingOpenLead) {
+        const [updated] = await db
+            .update(leads)
+            .set({
+                name: input.name,
+                email: input.email ?? existingOpenLead.email,
+                phone: normalizedPhone,
+                symptoms: input.symptoms ?? existingOpenLead.symptoms,
+                notes: input.notes ?? existingOpenLead.notes,
+                ...(input.patientId && !existingOpenLead.patientId
+                    ? { patientId: input.patientId }
+                    : {}),
+                updatedAt: new Date(),
+            })
+            .where(eq(leads.id, existingOpenLead.id))
+            .returning();
+
+        const [enriched] = await enrichLeads([updated]);
+        return enriched;
     }
 
     const [lead] = await db
@@ -302,7 +362,7 @@ export const createLead = async (input: CreateLeadInput) => {
             patientId: input.patientId,
             name: input.name,
             email: input.email,
-            phone: input.phone,
+            phone: normalizedPhone,
             source: input.source,
             status: "new_query",
             symptoms: input.symptoms,
@@ -407,12 +467,17 @@ export const updateLead = async (id: string, input: UpdateLeadInput) => {
         await assertPatientExists(input.patientId);
     }
 
+    const updatePayload = {
+        ...input,
+        ...(input.phone !== undefined && {
+            phone: normalizePhone(input.phone),
+        }),
+        updatedAt: new Date(),
+    };
+
     const [updated] = await db
         .update(leads)
-        .set({
-            ...input,
-            updatedAt: new Date(),
-        })
+        .set(updatePayload)
         .where(eq(leads.id, lead.id))
         .returning();
 

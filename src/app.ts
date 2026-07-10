@@ -22,6 +22,7 @@ import {
 import paymentsRoutes, {
     invoicePaymentsRouter,
 } from "./modules/payments/payments.routes";
+import analyticsRoutes from "./modules/analytics/analytics.routes";
 
 export const app = express();
 app.use(
@@ -59,3 +60,4 @@ app.use("/api/patient-memberships", patientMembershipsRouter);
 app.use("/api/invoices", billingRoutes);
 app.use("/api/invoices", invoicePaymentsRouter);
 app.use("/api/payments", paymentsRoutes);
+app.use("/api/analytics", analyticsRoutes);

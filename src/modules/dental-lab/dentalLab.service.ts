@@ -68,6 +68,22 @@ export interface RecordCementationInput {
     notes?: string;
 }
 
+export interface UpdateDentalLabOrderInput {
+    consultationId?: string | null;
+    measuredByDoctorId?: string;
+    cementationDoctorId?: string | null;
+    labName?: string;
+    itemType?: string;
+    toothNumber?: string | null;
+    shade?: string | null;
+    description?: string | null;
+    estimatedDeliveryDate?: Date | string | null;
+    orderedDate?: Date | string;
+    deliveredDate?: Date | string | null;
+    cementationDate?: Date | string | null;
+    notes?: string | null;
+}
+
 export type DentalLabOrderRow = typeof dentalLabOrders.$inferSelect;
 export type DentalLabOrderFileRow = typeof dentalLabOrderFiles.$inferSelect;
 
@@ -124,6 +140,14 @@ const toDate = (value?: Date | string | null) => {
 
     return value instanceof Date ? value : new Date(value);
 };
+
+const CEMENTATION_DONE_EDITABLE_FIELDS = new Set([
+    "notes",
+    "deliveredDate",
+    "measuredByDoctorId",
+    "cementationDoctorId",
+    "cementationDate",
+]);
 
 const assertClinicExists = async (clinicId: string) => {
     const [clinic] = await db
@@ -421,6 +445,107 @@ export const createDentalLabOrder = async (
     });
 
     return buildOrderDetails(order);
+};
+
+export const updateDentalLabOrder = async (
+    id: string,
+    input: UpdateDentalLabOrderInput
+) => {
+    const order = await getDentalLabOrderRecord(id);
+
+    if (order.status === "cementation_done") {
+        const editableFields = Object.entries(input).filter(
+            ([, value]) => value !== undefined
+        );
+
+        const onlyAllowedFields = editableFields.every(([key]) =>
+            CEMENTATION_DONE_EDITABLE_FIELDS.has(key)
+        );
+
+        if (!onlyAllowedFields) {
+            throw new Error(
+                "After cementation is completed, only notes, delivery date, cementation date, and doctor fields can be updated"
+            );
+        }
+    }
+
+    if (input.measuredByDoctorId) {
+        await assertDoctorInClinic(input.measuredByDoctorId, order.clinicId);
+    }
+
+    if (input.cementationDoctorId) {
+        await assertDoctorInClinic(input.cementationDoctorId, order.clinicId);
+    }
+
+    if (input.consultationId) {
+        await assertConsultationForPatient(
+            input.consultationId,
+            order.patientId,
+            order.clinicId
+        );
+    }
+
+    const now = new Date();
+    const statusUpdate: Partial<typeof dentalLabOrders.$inferInsert> = {};
+
+    if (input.deliveredDate !== undefined) {
+        if (input.deliveredDate === null) {
+            if (order.status === "cementation_done") {
+                throw new Error(
+                    "Delivery date cannot be cleared after cementation is completed"
+                );
+            }
+
+            statusUpdate.status = "ordered";
+            statusUpdate.deliveredDate = null;
+        } else {
+            const deliveredDate = toDate(input.deliveredDate);
+            statusUpdate.deliveredDate = deliveredDate;
+
+            if (order.status === "ordered") {
+                statusUpdate.status = "delivered";
+            }
+        }
+    }
+
+    const [updated] = await db
+        .update(dentalLabOrders)
+        .set({
+            ...(input.consultationId !== undefined && {
+                consultationId: input.consultationId,
+            }),
+            ...(input.measuredByDoctorId !== undefined && {
+                measuredByDoctorId: input.measuredByDoctorId,
+            }),
+            ...(input.cementationDoctorId !== undefined && {
+                cementationDoctorId: input.cementationDoctorId,
+            }),
+            ...(input.labName !== undefined && { labName: input.labName }),
+            ...(input.itemType !== undefined && { itemType: input.itemType }),
+            ...(input.toothNumber !== undefined && {
+                toothNumber: input.toothNumber,
+            }),
+            ...(input.shade !== undefined && { shade: input.shade }),
+            ...(input.description !== undefined && {
+                description: input.description,
+            }),
+            ...(input.estimatedDeliveryDate !== undefined && {
+                estimatedDeliveryDate: toDate(input.estimatedDeliveryDate),
+            }),
+            ...(input.orderedDate !== undefined && {
+                orderedDate: toDate(input.orderedDate) ?? order.orderedDate,
+            }),
+            ...(input.cementationDate !== undefined && {
+                cementationDate: toDate(input.cementationDate),
+            }),
+            ...(input.notes !== undefined && { notes: input.notes }),
+            ...statusUpdate,
+            updatedAt: now,
+        })
+        .where(eq(dentalLabOrders.id, id))
+        .returning();
+
+    return buildOrderDetails(updated);
 };
 
 export const listDentalLabOrders = async (

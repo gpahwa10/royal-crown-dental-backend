@@ -1,6 +1,11 @@
 import { Response } from "express";
 import { AuthRequest } from "../../middleware/auth.middleware";
-import { hasPlatformAdminAccess } from "../auth/auth.constants";
+import {
+    canListEmployees,
+    hasPlatformAdminAccess,
+    isDoctorEmployee,
+    ROLE_DOCTOR,
+} from "../auth/auth.constants";
 import {
     blockEmployee,
     editEmployee,
@@ -74,20 +79,48 @@ export const registerHRHandler = async (req: AuthRequest, res: Response) => {
 export const listEmployeesHandler = async (req: AuthRequest, res: Response) => {
     try {
         const query = listEmployeesQuerySchema.parse(req.query);
+        const hasFullListAccess = canListEmployees(req.employee);
+        const isDoctorSelectOnly = !hasFullListAccess;
 
         const clinicId = hasPlatformAdminAccess(req.employee)
             ? query.clinicId
             : req.employee?.clinicId;
 
+        if (!clinicId) {
+            return res.status(400).json({
+                success: false,
+                message: "clinicId is required",
+            });
+        }
+
+        if (
+            !hasPlatformAdminAccess(req.employee) &&
+            query.clinicId &&
+            query.clinicId !== req.employee?.clinicId
+        ) {
+            return res.status(403).json({
+                success: false,
+                message:
+                    "You cannot list employees from another clinic",
+            });
+        }
+
         const result = await listEmployees({
             clinicId,
             page: query.page,
             limit: query.limit,
+            role: isDoctorSelectOnly ? ROLE_DOCTOR : query.role,
+            status: isDoctorSelectOnly ? "active" : query.status,
         });
 
         return res.status(200).json({
             success: true,
-            data: result,
+            data: {
+                ...result,
+                ...(isDoctorEmployee(req.employee) && {
+                    defaultDoctorId: req.employee!.id,
+                }),
+            },
         });
     } catch (error) {
         return handleError(res, error);

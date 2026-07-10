@@ -1,5 +1,13 @@
 import { z } from "zod";
 import { LEAD_SOURCES, LEAD_STATUSES } from "./leads.constants";
+import { normalizePhone } from "./leads.utils";
+
+const phoneSchema = z
+    .string()
+    .trim()
+    .min(1)
+    .max(20)
+    .transform(normalizePhone);
 
 const optionalEmail = z
     .string()
@@ -17,7 +25,7 @@ export const createLeadSchema = z.object({
     patientId: z.uuid().optional(),
     name: z.string().trim().min(1),
     email: optionalEmail,
-    phone: z.string().trim().min(1).max(20),
+    phone: phoneSchema,
     source: z.enum(LEAD_SOURCES),
     symptoms: z.string().trim().optional(),
     notes: z.string().trim().optional(),
@@ -27,7 +35,7 @@ export const createPublicLeadSchema = z.object({
     clinicId: z.uuid(),
     name: z.string().trim().min(1),
     email: optionalEmail,
-    phone: z.string().trim().min(1).max(20),
+    phone: phoneSchema,
     symptoms: z.string().trim().optional(),
 });
 
@@ -47,7 +55,7 @@ export const updateLeadSchema = z
     .object({
         name: z.string().trim().min(1).optional(),
         email: optionalEmail.nullable(),
-        phone: z.string().trim().min(1).max(20).optional(),
+        phone: phoneSchema.optional(),
         source: z.enum(LEAD_SOURCES).optional(),
         symptoms: z.string().trim().nullable().optional(),
         notes: z.string().trim().nullable().optional(),

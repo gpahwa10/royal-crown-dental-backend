@@ -45,4 +45,5 @@ export const labRequestListQuerySchema = z.object({
     clinicId: z.uuid().optional(),
     doctorId: z.uuid().optional(),
     status: z.enum(LAB_REQUEST_STATUSES).optional(),
+    doctorName: z.string().trim().optional(),
 });

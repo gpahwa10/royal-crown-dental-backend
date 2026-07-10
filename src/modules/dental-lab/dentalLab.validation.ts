@@ -66,6 +66,26 @@ export const createDentalLabOrderSchema = z.object({
     notes: z.string().trim().optional(),
 });
 
+export const updateDentalLabOrderSchema = z
+    .object({
+        consultationId: z.uuid().nullable().optional(),
+        measuredByDoctorId: z.uuid().optional(),
+        cementationDoctorId: z.uuid().nullable().optional(),
+        labName: z.string().trim().min(1).optional(),
+        itemType: z.enum(DENTAL_LAB_ITEM_TYPES).optional(),
+        toothNumber: z.string().trim().nullable().optional(),
+        shade: z.string().trim().nullable().optional(),
+        description: z.string().trim().nullable().optional(),
+        estimatedDeliveryDate: z.coerce.date().nullable().optional(),
+        orderedDate: z.coerce.date().optional(),
+        deliveredDate: z.coerce.date().nullable().optional(),
+        cementationDate: z.coerce.date().nullable().optional(),
+        notes: z.string().trim().nullable().optional(),
+    })
+    .refine((data) => Object.keys(data).length > 0, {
+        message: "At least one field is required",
+    });
+
 export const deliverDentalLabOrderSchema = z
     .object({})
     .strict()

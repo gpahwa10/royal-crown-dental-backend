@@ -2,12 +2,81 @@ import { db } from "../../db/client";
 import { employeeRoleAssignments } from "../../db/schema/employeeRoleAssignments";
 import { employees } from "../../db/schema/employees";
 import { employeeRoles } from "../../db/schema/roles";
-import { and, count, eq, ne } from "drizzle-orm";
+import { and, count, eq, exists, ne, or } from "drizzle-orm";
 import bcrypt from "bcrypt";
+import { z } from "zod";
 import {
+    DESIGNATION_TO_ROLES,
+    normalizeRoleName,
     resolveRolesFromDesignation,
     SALT_ROUNDS,
 } from "../auth/auth.constants";
+
+const SUPER_ADMIN_ROLE = "Super Admin";
+
+const isUuid = (value: string) =>
+    z.uuid().safeParse(value).success;
+
+const getRoleByName = async (name: string) => {
+    const normalizedName = normalizeRoleName(name);
+    const [role] = await db
+        .select()
+        .from(employeeRoles)
+        .where(eq(employeeRoles.name, normalizedName));
+
+    if (!role) {
+        throw new Error(`Role "${name}" is not configured`);
+    }
+
+    return role;
+};
+
+const getRoleById = async (id: string) => {
+    const [role] = await db
+        .select()
+        .from(employeeRoles)
+        .where(eq(employeeRoles.id, id));
+
+    if (!role) {
+        throw new Error(`Role "${id}" is not configured`);
+    }
+
+    return role;
+};
+
+/** Resolves role names, designations, or role UUIDs into assignable role names. */
+export const resolveRoleIdentifiers = async (inputs: string[]) => {
+    const expanded: string[] = [];
+
+    for (const input of inputs) {
+        if (input in DESIGNATION_TO_ROLES) {
+            expanded.push(...DESIGNATION_TO_ROLES[input]);
+            continue;
+        }
+
+        if (isUuid(input)) {
+            const role = await getRoleById(input);
+            expanded.push(normalizeRoleName(role.name));
+            continue;
+        }
+
+        expanded.push(normalizeRoleName(input));
+    }
+
+    const uniqueRoleNames = [...new Set(expanded)];
+
+    for (const roleName of uniqueRoleNames) {
+        if (roleName === SUPER_ADMIN_ROLE) {
+            throw new Error(
+                "Super Admin role cannot be assigned to employees"
+            );
+        }
+
+        await getRoleByName(roleName);
+    }
+
+    return uniqueRoleNames;
+};
 
 const omitPassword = <T extends { password: string }>(record: T) => {
     const { password: _, ...rest } = record;
@@ -16,19 +85,6 @@ const omitPassword = <T extends { password: string }>(record: T) => {
 
 const hashPassword = (password: string) =>
     bcrypt.hash(password, SALT_ROUNDS);
-
-const getRoleByName = async (name: string) => {
-    const [role] = await db
-        .select()
-        .from(employeeRoles)
-        .where(eq(employeeRoles.name, name));
-
-    if (!role) {
-        throw new Error(`Role "${name}" is not configured`);
-    }
-
-    return role;
-};
 
 export const getEmployeeRoleNames = async (employeeId: string) => {
     const rows = await db
@@ -155,34 +211,80 @@ export interface ListEmployeesOptions {
     clinicId?: string;
     page?: number;
     limit?: number;
+    role?: string;
+    status?: "active" | "inactive" | "all";
 }
+
+const buildEmployeeStatusFilter = (status?: ListEmployeesOptions["status"]) => {
+    if (!status || status === "all") {
+        return undefined;
+    }
+
+    if (status === "active") {
+        return and(
+            eq(employees.isActive, true),
+            eq(employees.isBlocked, false),
+            eq(employees.isSuspended, false)
+        );
+    }
+
+    return or(
+        eq(employees.isActive, false),
+        eq(employees.isBlocked, true),
+        eq(employees.isSuspended, true)
+    );
+};
+
+const buildEmployeeRoleFilter = (role?: string) => {
+    if (!role) {
+        return undefined;
+    }
+
+    const normalizedRole = normalizeRoleName(role);
+
+    return exists(
+        db
+            .select({ employeeId: employeeRoleAssignments.employeeId })
+            .from(employeeRoleAssignments)
+            .innerJoin(
+                employeeRoles,
+                eq(employeeRoleAssignments.roleId, employeeRoles.id)
+            )
+            .where(
+                and(
+                    eq(employeeRoleAssignments.employeeId, employees.id),
+                    eq(employeeRoles.name, normalizedRole)
+                )
+            )
+    );
+};
 
 export const listEmployees = async (options: ListEmployeesOptions = {}) => {
     const page = Math.max(1, options.page ?? 1);
     const limit = Math.min(100, Math.max(1, options.limit ?? 10));
     const offset = (page - 1) * limit;
 
-    const clinicFilter = options.clinicId
-        ? eq(employees.clinicId, options.clinicId)
-        : undefined;
+    const filters = [
+        options.clinicId ? eq(employees.clinicId, options.clinicId) : undefined,
+        buildEmployeeStatusFilter(options.status),
+        buildEmployeeRoleFilter(options.role),
+    ].filter((filter): filter is NonNullable<typeof filter> => Boolean(filter));
 
-    const [countResult] = clinicFilter
-        ? await db
-            .select({ value: count() })
-            .from(employees)
-            .where(clinicFilter)
-        : await db.select({ value: count() }).from(employees);
+    const whereClause = filters.length > 0 ? and(...filters) : undefined;
+
+    const [countResult] = await db
+        .select({ value: count() })
+        .from(employees)
+        .where(whereClause);
 
     const total = Number(countResult.value);
 
-    const employeesData = clinicFilter
-        ? await db
-            .select()
-            .from(employees)
-            .where(clinicFilter)
-            .limit(limit)
-            .offset(offset)
-        : await db.select().from(employees).limit(limit).offset(offset);
+    const employeesData = await db
+        .select()
+        .from(employees)
+        .where(whereClause)
+        .limit(limit)
+        .offset(offset);
 
     const items = await Promise.all(
         employeesData.map(async (employee) => ({
@@ -262,10 +364,11 @@ export const editEmployee = async (input: EditEmployeeInput) => {
         .returning();
 
     if (input.roles !== undefined) {
+        const roleNames = await resolveRoleIdentifiers(input.roles);
         await db
             .delete(employeeRoleAssignments)
             .where(eq(employeeRoleAssignments.employeeId, input.id));
-        await assignRolesToEmployee(input.id, input.roles);
+        await assignRolesToEmployee(input.id, roleNames);
     } else if (input.designation !== undefined) {
         const roleNames = resolveRolesFromDesignation(input.designation);
         await db

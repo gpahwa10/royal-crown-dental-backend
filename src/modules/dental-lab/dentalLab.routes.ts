@@ -9,6 +9,7 @@ import {
     listDentalLabOrdersHandler,
     recordCementationHandler,
     removeDentalLabFileHandler,
+    updateDentalLabOrderHandler,
 } from "./dentalLab.controller";
 
 const router = Router();
@@ -18,6 +19,7 @@ router.use(authenticate);
 router.post("/", createDentalLabOrderHandler);
 router.get("/", listDentalLabOrdersHandler);
 router.get("/:id", getDentalLabOrderHandler);
+router.patch("/:id", updateDentalLabOrderHandler);
 router.patch("/:id/deliver", deliverDentalLabOrderHandler);
 router.post("/:id/cementation-appointment", createCementationAppointmentHandler);
 router.patch("/:id/cementation", recordCementationHandler);

@@ -8,6 +8,7 @@ import { employeeRoleAssignments } from "../db/schema/employeeRoleAssignments";
 import { employees } from "../db/schema/employees";
 import { employeeRoles } from "../db/schema/roles";
 import {
+    EMPLOYEE_ROLES,
     resolveRolesFromDesignation,
     SALT_ROUNDS,
 } from "../modules/auth/auth.constants";
@@ -35,17 +36,7 @@ const buildEmail = (employee: SeedEmployee) => {
 };
 
 const seedEmployeeRoles = async () => {
-    const roleNames = [
-        "Doctor",
-        "Assistant",
-        "HR Head",
-        "HR Assistant",
-        "Lab Technician",
-        "Phlebotomist",
-        "Reception",
-        "Super Admin",
-        "Director",
-    ];
+    const roleNames = [...EMPLOYEE_ROLES, "Super Admin"];
 
     for (const name of roleNames) {
         await db
