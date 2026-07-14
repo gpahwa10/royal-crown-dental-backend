@@ -127,6 +127,7 @@ export type DentalLabOrderPatientSummary = {
     deliveredDate: Date | null;
     cementationDate: Date | null;
     notes: string | null;
+    patient: PatientSummary;
     measuredDoctor: DoctorSummary;
     cementationDoctor: DoctorSummary | null;
     attachments: FileRecord[];
@@ -369,6 +370,7 @@ const buildOrderDetails = async (
 
 const toPatientSummary = async (
     order: DentalLabOrderRow,
+    patient: PatientSummary,
     attachments: FileRecord[],
     appointment: typeof appointments.$inferSelect | null,
     measuredDoctor: DoctorSummary,
@@ -387,6 +389,7 @@ const toPatientSummary = async (
     deliveredDate: order.deliveredDate,
     cementationDate: order.cementationDate,
     notes: order.notes,
+    patient,
     measuredDoctor,
     cementationDoctor,
     attachments,
@@ -600,7 +603,12 @@ export const listDentalLabOrders = async (
         .where(whereClause);
 
     const rows = await db
-        .select({ order: dentalLabOrders })
+        .select({
+            order: dentalLabOrders,
+            patientId: patients.id,
+            patientCode: patients.patientCode,
+            patientName: patients.name,
+        })
         .from(dentalLabOrders)
         .innerJoin(patients, eq(dentalLabOrders.patientId, patients.id))
         .where(whereClause)
@@ -627,6 +635,11 @@ export const listDentalLabOrders = async (
 
             return toPatientSummary(
                 row.order,
+                {
+                    id: row.patientId,
+                    patientCode: row.patientCode,
+                    name: row.patientName,
+                },
                 attachmentsByOrderId.get(row.order.id) ?? [],
                 row.order.cementationAppointmentId
                     ? (appointmentById.get(row.order.cementationAppointmentId) ??
@@ -822,7 +835,7 @@ export const removeDentalLabFile = async (id: string, fileId: string) => {
 };
 
 export const listDentalLabOrdersByPatientId = async (patientId: string) => {
-    await assertPatientExists(patientId);
+    const patient = await assertPatientExists(patientId);
 
     const orderRows = await db
         .select()
@@ -851,6 +864,11 @@ export const listDentalLabOrdersByPatientId = async (patientId: string) => {
 
             return toPatientSummary(
                 order,
+                {
+                    id: patient.id,
+                    patientCode: patient.patientCode,
+                    name: patient.name,
+                },
                 attachmentsByOrderId.get(order.id) ?? [],
                 order.cementationAppointmentId
                     ? (appointmentById.get(order.cementationAppointmentId) ??

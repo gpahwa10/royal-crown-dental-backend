@@ -11,6 +11,7 @@ import {
     or,
     sql,
 } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { db } from "../../db/client";
 import { inventoryCategory } from "../../db/schema/inventoryCategories";
 import { inventoryItem } from "../../db/schema/inventoryItems";
@@ -81,6 +82,30 @@ export interface ListTransactionsOptions {
 }
 
 const lowStockCondition = sql`${inventoryStock.inStock} < COALESCE(NULLIF(${inventoryStock.requiredStock}, 0), ${inventoryItem.minimumStockLevel})`;
+
+const fromInventoryLocation = alias(inventoryLocation, "from_inventory_location");
+const toInventoryLocation = alias(inventoryLocation, "to_inventory_location");
+
+const toTransactionWithLocationNames = (row: {
+    transaction: typeof inventoryTransaction.$inferSelect;
+    itemName: string;
+    fromLocationName: string | null;
+    toLocationName: string | null;
+}) => {
+    const {
+        variantId: _variantId,
+        fromLocationId: _fromLocationId,
+        toLocationId: _toLocationId,
+        ...rest
+    } = row.transaction;
+
+    return {
+        ...rest,
+        itemName: row.itemName,
+        fromLocationName: row.fromLocationName,
+        toLocationName: row.toLocationName,
+    };
+};
 
 const resolveVariantId = async (
     input: StockTargetInput,
@@ -798,20 +823,39 @@ export const listTransactions = async (
 
     const total = Number(countResult.value);
 
-    const items = whereClause
-        ? await db
-              .select()
-              .from(inventoryTransaction)
-              .where(whereClause)
-              .limit(limit)
-              .offset(offset)
-              .orderBy(desc(inventoryTransaction.createdAt))
-        : await db
-              .select()
-              .from(inventoryTransaction)
-              .limit(limit)
-              .offset(offset)
-              .orderBy(desc(inventoryTransaction.createdAt));
+    const transactionQuery = db
+        .select({
+            transaction: inventoryTransaction,
+            itemName: inventoryItem.name,
+            fromLocationName: fromInventoryLocation.name,
+            toLocationName: toInventoryLocation.name,
+        })
+        .from(inventoryTransaction)
+        .innerJoin(
+            inventoryVariant,
+            eq(inventoryTransaction.variantId, inventoryVariant.id)
+        )
+        .innerJoin(
+            inventoryItem,
+            eq(inventoryVariant.inventoryItemId, inventoryItem.id)
+        )
+        .leftJoin(
+            fromInventoryLocation,
+            eq(inventoryTransaction.fromLocationId, fromInventoryLocation.id)
+        )
+        .leftJoin(
+            toInventoryLocation,
+            eq(inventoryTransaction.toLocationId, toInventoryLocation.id)
+        )
+        .orderBy(desc(inventoryTransaction.createdAt))
+        .limit(limit)
+        .offset(offset);
+
+    const rows = whereClause
+        ? await transactionQuery.where(whereClause)
+        : await transactionQuery;
+
+    const items = rows.map(toTransactionWithLocationNames);
 
     return {
         items,
@@ -820,16 +864,37 @@ export const listTransactions = async (
 };
 
 export const getTransactionById = async (id: string) => {
-    const [transaction] = await db
-        .select()
+    const [row] = await db
+        .select({
+            transaction: inventoryTransaction,
+            itemName: inventoryItem.name,
+            fromLocationName: fromInventoryLocation.name,
+            toLocationName: toInventoryLocation.name,
+        })
         .from(inventoryTransaction)
+        .innerJoin(
+            inventoryVariant,
+            eq(inventoryTransaction.variantId, inventoryVariant.id)
+        )
+        .innerJoin(
+            inventoryItem,
+            eq(inventoryVariant.inventoryItemId, inventoryItem.id)
+        )
+        .leftJoin(
+            fromInventoryLocation,
+            eq(inventoryTransaction.fromLocationId, fromInventoryLocation.id)
+        )
+        .leftJoin(
+            toInventoryLocation,
+            eq(inventoryTransaction.toLocationId, toInventoryLocation.id)
+        )
         .where(eq(inventoryTransaction.id, id));
 
-    if (!transaction) {
+    if (!row) {
         throw new Error("Inventory transaction not found");
     }
 
-    return transaction;
+    return toTransactionWithLocationNames(row);
 };
 
 export const getInventoryDashboard = async () => {
