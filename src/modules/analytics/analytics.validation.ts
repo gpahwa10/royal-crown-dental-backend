@@ -47,9 +47,9 @@ export const analyticsFiltersSchema = analyticsBaseQuerySchema.extend({
     employee: z
         .object({
             id: z.string(),
-            clinicId: z.string().uuid().nullable(),
-            roles: z.array(z.string()),
-            isSuperAdmin: z.boolean(),
+            clinicId: z.string().uuid().nullable().optional(),
+            roles: z.array(z.string()).default([]),
+            isSuperAdmin: z.boolean().optional().default(false),
         })
         .nullable()
         .optional(),
