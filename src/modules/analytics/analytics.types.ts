@@ -55,6 +55,7 @@ export interface AlertItem {
 
 export type RecentActivityType =
     | "patient_registered"
+    | "lead_created"
     | "consultation_completed"
     | "invoice_generated"
     | "payment_received"

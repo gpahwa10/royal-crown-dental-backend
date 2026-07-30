@@ -157,11 +157,46 @@ const fetchCurrentStockByItemIds = async (
     return stockMap;
 };
 
+const fetchVariantsByItemIds = async (itemIds: string[]) => {
+    const variantsByItemId = new Map<
+        string,
+        (typeof inventoryVariant.$inferSelect)[]
+    >();
+
+    if (itemIds.length === 0) {
+        return variantsByItemId;
+    }
+
+    for (const itemId of itemIds) {
+        variantsByItemId.set(itemId, []);
+    }
+
+    const rows = await db
+        .select()
+        .from(inventoryVariant)
+        .where(
+            and(
+                inArray(inventoryVariant.inventoryItemId, itemIds),
+                eq(inventoryVariant.isActive, true)
+            )
+        )
+        .orderBy(inventoryVariant.name);
+
+    for (const row of rows) {
+        const existing = variantsByItemId.get(row.inventoryItemId) ?? [];
+        existing.push(row);
+        variantsByItemId.set(row.inventoryItemId, existing);
+    }
+
+    return variantsByItemId;
+};
+
 const enrichItemWithStock = <
     T extends { id: string; minimumStockLevel: number },
 >(
     item: T,
-    stockMap: Map<string, { currentStock: number; reservedStock: number }>
+    stockMap: Map<string, { currentStock: number; reservedStock: number }>,
+    variantsByItemId?: Map<string, (typeof inventoryVariant.$inferSelect)[]>
 ) => {
     const stock = stockMap.get(item.id) ?? {
         currentStock: 0,
@@ -173,6 +208,7 @@ const enrichItemWithStock = <
         currentStock: stock.currentStock,
         reservedStock: stock.reservedStock,
         isLowStock: stock.currentStock < item.minimumStockLevel,
+        variants: variantsByItemId?.get(item.id) ?? [],
     };
 };
 
@@ -371,13 +407,16 @@ export const listInventoryItems = async (options: ListItemsOptions = {}) => {
               .offset(offset)
               .orderBy(desc(inventoryItem.createdAt));
 
-    const stockMap = await fetchCurrentStockByItemIds(
-        items.map((item) => item.id),
-        options.clinicId
-    );
+    const itemIds = items.map((item) => item.id);
+    const [stockMap, variantsByItemId] = await Promise.all([
+        fetchCurrentStockByItemIds(itemIds, options.clinicId),
+        fetchVariantsByItemIds(itemIds),
+    ]);
 
     return {
-        items: items.map((item) => enrichItemWithStock(item, stockMap)),
+        items: items.map((item) =>
+            enrichItemWithStock(item, stockMap, variantsByItemId)
+        ),
         pagination: buildPaginationMeta(page, limit, total),
     };
 };

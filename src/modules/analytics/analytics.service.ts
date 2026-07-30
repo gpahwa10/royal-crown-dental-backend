@@ -676,11 +676,13 @@ const getRecentActivities = async (
                     id: leads.id,
                     clinicId: leads.clinicId,
                     name: leads.name,
-                    occurredAt: leads.createdAt,
+                    createdAt: leads.createdAt,
+                    updatedAt: leads.updatedAt,
                 })
                 .from(leads)
                 .where(clinicFilter(leads.clinicId, scope.clinicId))
-                .orderBy(desc(leads.createdAt))
+                // Prefer updatedAt so phone-number upserts (createLead updates) also surface.
+                .orderBy(desc(leads.updatedAt))
                 .limit(5),
         ]);
 
@@ -709,14 +711,21 @@ const getRecentActivities = async (
             label: `Payment received: ${row.amount}`,
             occurredAt: row.occurredAt.toISOString(),
         })),
-        ...recentLeads.map((row) => ({
-            type: "patient_registered" as const,
-            id: row.id,
-            clinicId: row.clinicId,
-            label: `Lead created: ${row.name}`,
-            occurredAt: row.occurredAt.toISOString(),
-            meta: { entity: "lead" },
-        })),
+        ...recentLeads.map((row) => {
+            const createdMs = row.createdAt.getTime();
+            const updatedMs = row.updatedAt.getTime();
+            const isFreshCreate = Math.abs(updatedMs - createdMs) < 5_000;
+            return {
+                type: "lead_created" as const,
+                id: row.id,
+                clinicId: row.clinicId,
+                label: isFreshCreate
+                    ? `Lead created: ${row.name}`
+                    : `Lead updated: ${row.name}`,
+                occurredAt: row.updatedAt.toISOString(),
+                meta: { entity: "lead", isFreshCreate },
+            };
+        }),
     ];
 
     return activities
