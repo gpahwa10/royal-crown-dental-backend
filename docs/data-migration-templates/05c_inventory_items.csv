@@ -1,0 +1,3 @@
+item_name,category_name,clinic_code,sku,unit,minimum_stock_level,description,is_active
+Dental Gloves,Consumables,,GLV-NIT-001,box,10,Nitrile examination gloves,true
+Amoxicillin 500mg,Medicines,CLN-BLR-01,MED-AMOX-500,strip,20,Antibiotic capsules,true

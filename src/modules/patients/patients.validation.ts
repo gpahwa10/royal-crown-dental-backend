@@ -136,6 +136,11 @@ export const blacklistPatientSchema = z.object({
     reason: z.string().trim().optional(),
 });
 
+/** Bulk import body — row-level validation happens in the service for partial success. */
+export const bulkCreatePatientsSchema = z.object({
+    patients: z.array(z.record(z.string(), z.unknown())).min(1).max(500),
+});
+
 export const patientListQuerySchema = z.object({
     page: z.coerce.number().int().min(1).default(1),
     limit: z.coerce.number().int().min(1).max(100).default(20),

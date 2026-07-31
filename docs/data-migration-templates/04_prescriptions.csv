@@ -1,0 +1,2 @@
+legacy_prescription_id,patient_code,doctor_email,clinic_code,consultation_reference,notes,prescribed_at
+RX-LEGACY-001,PAT000001,anita.sharma@yourvcare.com,CLN-BLR-01,CONS-LEGACY-001,Take after meals,2026-06-01 11:00:00

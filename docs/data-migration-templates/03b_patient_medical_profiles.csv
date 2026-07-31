@@ -1,0 +1,2 @@
+patient_code,allergies,current_medications,chronic_conditions,pregnancy_status,dental_anxiety,last_dental_visit,last_xray_date,primary_physician_name,primary_physician_phone,initial_chief_complaint
+PAT000001,Penicillin|Latex,Paracetamol,Hypertension,Not Applicable,mild,2025-12-01,2025-11-15,Dr. Mehta,9876522222,Tooth pain upper right

@@ -1,0 +1,6 @@
+package_name,medicine_name,dosage,frequency,duration,instructions,is_active
+Post Extraction Pack,Amoxicillin 500mg,1 capsule,Thrice daily,5 days,After food,true
+Post Extraction Pack,Ibuprofen 400mg,1 tablet,Twice daily,3 days,After food,true
+Post Extraction Pack,Chlorhexidine Mouthwash,10 ml,Twice daily,7 days,Do not swallow,true
+Root Canal Pack,Amoxicillin 500mg,1 capsule,Thrice daily,5 days,After food,true
+Root Canal Pack,Paracetamol 650mg,1 tablet,Thrice daily,3 days,As needed for pain,true

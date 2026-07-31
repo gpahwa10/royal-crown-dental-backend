@@ -1,0 +1,2 @@
+legacy_patient_id,patient_code,clinic_code,patient_type,name,phone,email,gender,date_of_birth,address,emergency_contact_name,emergency_contact_phone,emergency_contact_relation,is_premium_member,is_black_listed,black_listed_reason,last_visit_at,is_active
+P-LEGACY-001,PAT000001,CLN-BLR-01,existing,Rahul Verma,9876511111,rahul.verma@email.com,Male,1990-05-12,"45 MG Road, Bengaluru",Sita Verma,9876511112,Spouse,false,false,,2026-06-01 10:30:00,true

@@ -1,0 +1,3 @@
+legacy_prescription_id,medicine_name,dosage,frequency,duration,instructions
+RX-LEGACY-001,Amoxicillin 500mg,1 capsule,Thrice daily,5 days,After food
+RX-LEGACY-001,Ibuprofen 400mg,1 tablet,Twice daily,3 days,After food

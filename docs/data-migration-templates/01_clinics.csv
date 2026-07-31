@@ -1,0 +1,2 @@
+legacy_clinic_id,clinic_code,clinic_name,email,phone,address,city,state,country,pincode,is_active
+101,CLN-BLR-01,YourVCare Dental - Indiranagar,indiranagar@yourvcare.com,9876543210,"12, 100 Feet Rd, Indiranagar",Bengaluru,Karnataka,India,560038,true

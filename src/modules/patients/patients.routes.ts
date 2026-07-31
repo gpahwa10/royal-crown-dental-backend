@@ -10,6 +10,7 @@ import { listPatientRadiographsHandler } from "../radiographs/radiographs.contro
 import { listPatientPrescriptionsHandler } from "../prescriptions/prescriptions.controller";
 import {
     blacklistPatientHandler,
+    bulkRegisterPatientsHandler,
     getPatientDetailsHandler,
     listPatientsByClinicHandler,
     listPatientsHandler,
@@ -23,6 +24,7 @@ const router = Router();
 
 router.use(authenticate);
 
+router.post("/bulk", bulkRegisterPatientsHandler);
 router.post("/", registerPatientHandler);
 router.get("/", listPatientsHandler);
 router.get("/clinic/:clinicId", listPatientsByClinicHandler);

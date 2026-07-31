@@ -53,6 +53,7 @@ import {
     PatientType,
     PregnancyStatus,
 } from "./patients.constants";
+import { createPatientSchema } from "./patients.validation";
 import {
     assertPatientClinicAccess,
     generatePatientCode,
@@ -333,6 +334,97 @@ export const registerPatient = async (input: RegisterPatientInput) => {
     });
 
     return result;
+};
+
+export type BulkRegisterPatientSuccess = {
+    index: number;
+    id: string;
+    patientCode: string;
+    name: string;
+    phone: string;
+};
+
+export type BulkRegisterPatientFailure = {
+    index: number;
+    name?: string;
+    phone?: string;
+    message: string;
+};
+
+export type BulkRegisterPatientsResult = {
+    summary: {
+        total: number;
+        created: number;
+        failed: number;
+    };
+    created: BulkRegisterPatientSuccess[];
+    failed: BulkRegisterPatientFailure[];
+};
+
+export const bulkRegisterPatients = async (
+    rows: Record<string, unknown>[],
+    options?: { forceClinicId?: string }
+): Promise<BulkRegisterPatientsResult> => {
+    const created: BulkRegisterPatientSuccess[] = [];
+    const failed: BulkRegisterPatientFailure[] = [];
+
+    for (const [index, row] of rows.entries()) {
+        const payload = options?.forceClinicId
+            ? { ...row, clinicId: options.forceClinicId }
+            : row;
+
+        const parsed = createPatientSchema.safeParse(payload);
+
+        if (!parsed.success) {
+            failed.push({
+                index,
+                name:
+                    typeof row.name === "string" ? row.name : undefined,
+                phone:
+                    typeof row.phone === "string" ? row.phone : undefined,
+                message: parsed.error.issues
+                    .map((issue) => {
+                        const path = issue.path.length
+                            ? `${issue.path.join(".")}: `
+                            : "";
+                        return `${path}${issue.message}`;
+                    })
+                    .join("; "),
+            });
+            continue;
+        }
+
+        try {
+            const result = await registerPatient(parsed.data);
+            created.push({
+                index,
+                id: result.patient.id,
+                patientCode: result.patient.patientCode,
+                name: result.patient.name,
+                phone: result.patient.phone,
+            });
+        } catch (error) {
+            failed.push({
+                index,
+                name: parsed.data.name,
+                phone: parsed.data.phone,
+                message:
+                    error instanceof Error
+                        ? error.message
+                        : "Something went wrong",
+            });
+        }
+    }
+
+    return {
+        summary: {
+            total: rows.length,
+            created: created.length,
+            failed: failed.length,
+        },
+        created,
+        failed,
+    };
 };
 
 export const listPatients = async (options: ListPatientsOptions) => {

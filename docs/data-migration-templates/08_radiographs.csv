@@ -1,0 +1,2 @@
+legacy_radiograph_id,clinic_code,patient_code,doctor_email,consultation_reference,study_type,tooth_region,scheduled_date,notes,status,image_file_path,report_file_path,report_text,created_at
+RAD-001,CLN-BLR-01,PAT000001,anita.sharma@yourvcare.com,CONS-LEGACY-001,OPG,Full mouth,2026-05-10 10:00:00,Pre-treatment OPG,reported,reports/radiographs/RAD-001.jpg,reports/radiographs/RAD-001-report.pdf,No major pathology noted,2026-05-10 10:15:00

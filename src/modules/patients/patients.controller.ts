@@ -4,6 +4,7 @@ import { hasPlatformAdminAccess } from "../auth/auth.constants";
 import {
     assertPatientClinicAccess,
     blacklistPatient,
+    bulkRegisterPatients,
     getPatientById,
     getPatientDetails,
     listPatients,
@@ -15,6 +16,7 @@ import {
 import { handleError } from "./patients.utils";
 import {
     blacklistPatientSchema,
+    bulkCreatePatientsSchema,
     clinicIdParamSchema,
     createPatientSchema,
     patientIdParamSchema,
@@ -60,6 +62,54 @@ export const registerPatientHandler = async (
         });
 
         return res.status(201).json({ success: true, data: result });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
+export const bulkRegisterPatientsHandler = async (
+    req: AuthRequest,
+    res: Response
+) => {
+    try {
+        const body = bulkCreatePatientsSchema.parse(req.body);
+
+        const forceClinicId = hasPlatformAdminAccess(req.employee)
+            ? undefined
+            : req.employee?.clinicId;
+
+        if (!hasPlatformAdminAccess(req.employee) && !forceClinicId) {
+            return res.status(400).json({
+                success: false,
+                message: "clinicId is required",
+            });
+        }
+
+        if (hasPlatformAdminAccess(req.employee)) {
+            const missingClinic = body.patients.some(
+                (row) => typeof row.clinicId !== "string" || !row.clinicId
+            );
+            if (missingClinic) {
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "clinicId is required on every patient for platform admin bulk import",
+                });
+            }
+        }
+
+        const result = await bulkRegisterPatients(body.patients, {
+            forceClinicId,
+        });
+
+        const status =
+            result.summary.created === 0
+                ? 400
+                : result.summary.failed > 0
+                  ? 207
+                  : 201;
+
+        return res.status(status).json({ success: true, data: result });
     } catch (error) {
         return handleError(res, error);
     }

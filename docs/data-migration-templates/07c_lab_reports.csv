@@ -1,0 +1,3 @@
+legacy_lab_request_id,lab_request_code,report_name,report_url_or_file_path,uploaded_at
+LAB-REQ-001,LR000001,CBC Report,reports/lab/LAB-REQ-001-cbc.pdf,2026-05-02 11:05:00
+LAB-REQ-001,LR000001,HbA1c Report,reports/lab/LAB-REQ-001-hba1c.pdf,2026-05-02 11:06:00

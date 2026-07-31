@@ -1,0 +1,4 @@
+item_name,item_sku,variant_name,variant_sku,is_active
+Dental Gloves,GLV-NIT-001,Size M,GLV-NIT-001-M,true
+Dental Gloves,GLV-NIT-001,Size L,GLV-NIT-001-L,true
+Amoxicillin 500mg,MED-AMOX-500,Default,MED-AMOX-500-DEF,true

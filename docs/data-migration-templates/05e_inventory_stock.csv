@@ -1,0 +1,4 @@
+variant_sku,location_name,in_stock,reserved_stock,required_stock
+GLV-NIT-001-M,Main Warehouse,100,0,50
+GLV-NIT-001-M,Indiranagar Store Room,20,0,10
+MED-AMOX-500-DEF,Indiranagar Store Room,40,0,20
