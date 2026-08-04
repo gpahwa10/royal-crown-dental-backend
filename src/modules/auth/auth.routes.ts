@@ -2,6 +2,7 @@ import { Router } from "express";
 import { authenticate } from "../../middleware/auth.middleware";
 import { ensureSuperAdminCreateAccess } from "../../middleware/auth.middleware";
 import {
+    changePasswordHandler,
     createSuperAdminHandler,
     loginHandler,
     logoutHandler,
@@ -18,5 +19,6 @@ router.post(
 );
 
 router.post("/logout", authenticate, logoutHandler);
+router.post("/change-password", authenticate, changePasswordHandler);
 
 export default router;

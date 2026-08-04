@@ -14,6 +14,8 @@ import {
     suspendEmployeeHandler,
     activateEmployeeHandler,
     blockEmployeeHandler,
+    getEmployeeWorkingHoursHandler,
+    putEmployeeWorkingHoursHandler,
 } from "./employees.controller";
 
 const router = Router();
@@ -40,6 +42,20 @@ router.get(
     authenticate,
     requireEmployeeListAccess,
     listEmployeesHandler
+);
+
+router.get(
+    "/:id/working-hours",
+    authenticate,
+    requireEmployeeListAccess,
+    getEmployeeWorkingHoursHandler
+);
+
+router.put(
+    "/:id/working-hours",
+    authenticate,
+    requireStaffRegistration,
+    putEmployeeWorkingHoursHandler
 );
 
 router.put(

@@ -4,7 +4,9 @@ import {
     createClinicHandler,
     deleteClinicHandler,
     getClinicHandler,
+    getClinicWorkingHoursHandler,
     listClinicsHandler,
+    putClinicWorkingHoursHandler,
     updateClinicHandler,
 } from "./clinics.controller";
 
@@ -14,6 +16,8 @@ router.use(authenticate);
 
 router.get("/list", listClinicsHandler);
 router.get("/", listClinicsHandler);
+router.get("/:id/working-hours", getClinicWorkingHoursHandler);
+router.put("/:id/working-hours", putClinicWorkingHoursHandler);
 router.get("/:id", getClinicHandler);
 router.post("/", createClinicHandler);
 router.patch("/:id", updateClinicHandler);

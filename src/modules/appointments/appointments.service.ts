@@ -26,6 +26,11 @@ import {
     generateAppointmentCode,
     getPagination,
 } from "./appointments.utils";
+import {
+    assertAppointmentScheduleValid,
+    listAvailableDoctors,
+} from "../scheduling/scheduling.service";
+import { DEFAULT_APPOINTMENT_DURATION_MINUTES } from "../scheduling/scheduling.constants";
 
 export interface CreateAppointmentInput {
     clinicId: string;
@@ -337,6 +342,15 @@ export const createAppointment = async (input: CreateAppointmentInput) => {
         input.appointmentTime
     );
 
+    const durationMinutes = DEFAULT_APPOINTMENT_DURATION_MINUTES;
+
+    await assertAppointmentScheduleValid({
+        clinicId: input.clinicId,
+        employeeId: input.employeeId,
+        scheduledAt,
+        durationMinutes,
+    });
+
     const [appointment] = await db.transaction(async (tx) => {
         const appointmentCode = await generateAppointmentCode(tx);
         const [created] = await tx
@@ -348,6 +362,7 @@ export const createAppointment = async (input: CreateAppointmentInput) => {
                 leadId: input.leadId,
                 employeeId: input.employeeId,
                 scheduledAt,
+                durationMinutes,
                 symptoms: input.symptoms ?? leadRecord?.symptoms ?? undefined,
                 status: "scheduled",
                 appointmentType: input.appointmentType ?? "general",
@@ -513,6 +528,28 @@ export const updateAppointment = async (
           )
         : undefined;
 
+    const nextEmployeeId =
+        input.employeeId !== undefined
+            ? input.employeeId
+            : appointment.employeeId;
+    const nextScheduledAt = scheduledAt ?? appointment.scheduledAt;
+    const durationMinutes =
+        appointment.durationMinutes ?? DEFAULT_APPOINTMENT_DURATION_MINUTES;
+
+    if (
+        hasScheduleInput ||
+        input.employeeId !== undefined ||
+        input.clinicId !== undefined
+    ) {
+        await assertAppointmentScheduleValid({
+            clinicId,
+            employeeId: nextEmployeeId,
+            scheduledAt: nextScheduledAt,
+            durationMinutes,
+            excludeAppointmentId: appointment.id,
+        });
+    }
+
     const [updated] = await db
         .update(appointments)
         .set({
@@ -534,6 +571,8 @@ export const updateAppointment = async (
     const [enriched] = await enrichAppointments([updated]);
     return enriched;
 };
+
+export const getAvailableDoctorsForSlot = listAvailableDoctors;
 
 export const updateAppointmentStatus = async (
     id: string,

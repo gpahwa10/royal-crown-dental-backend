@@ -1,0 +1,76 @@
+First name,Phone,Email,Position,Center / Notes,Branch,clinicId,Timings
+Dr Azhar ,97694 06733,Drazhar45@gmail.com,Founder,Active,Super Admin / Director,1debbfb1-e9e5-4b99-b2e7-a7c96b645201,
+Dr Yeman,90176 86869,dryemanfaujiya@gmail.com,Co-Founder,Active,Super Admin ,1debbfb1-e9e5-4b99-b2e7-a7c96b645201,
+Mr . Prasad,98925 57234,prassadsathe@gmail.com,Retail ,Active,Super Admin ,1debbfb1-e9e5-4b99-b2e7-a7c96b645201,
+Ms. Sonal,9920510994,sonalbharara20@gmail.com,Hr Head,Active,HR HEAD,1debbfb1-e9e5-4b99-b2e7-a7c96b645201,10-7
+DR SHREEYA,76667 09357,drshreeyakorambeth@gmail.com,Doctor,Active,Nalasopara west,04e0c939-920a-4789-a636-d62ed21c61c1,10-7
+SAMIKSHA JADHAV,70397 85641,Samikshajadhav0711@gmail.com,Assistant,Active,Nalasopara west,04e0c939-920a-4789-a636-d62ed21c61c1,10-7
+KAJAL MESTRY,81089 61495,Kajalmestry24@gmail.com,Assistant,Active,Nalasopara west,04e0c939-920a-4789-a636-d62ed21c61c1,12-9
+RUDALI,72640 57034,rudalijadhav703@gmail.com,FDE,Active,Nalasopara west,04e0c939-920a-4789-a636-d62ed21c61c1,2-9
+KIRAN JAIN,93240 75188,Kiranjain78653@gmail.com,FDE,Active,Nalasopara west,04e0c939-920a-4789-a636-d62ed21c61c1,8-2
+dr vibha,82910 25192,vibhamane3591@gmail.com,Doctor,Active,Nalasopara west,04e0c939-920a-4789-a636-d62ed21c61c1,12-9
+KALYANI, 84518 15093,kalyanichaudhari1308@gmail.com ,Retail ,Active,Thane,79bfb03f-b813-46c9-bcc5-f6fd4722cdf7,12-9
+DEEPIKA,93262 76638,deepikayadav3522@gmali.com,Assistant,Active,Thane,79bfb03f-b813-46c9-bcc5-f6fd4722cdf7,12-9
+DR NAMRATA,99221 55823,namratasharma9497@gmail.com ,Doctor,Active,Thane,79bfb03f-b813-46c9-bcc5-f6fd4722cdf7,10-7
+DR SAKSHI,98705 31997,sakshik0305@gmail.com ,Doctor,Active,Thane,79bfb03f-b813-46c9-bcc5-f6fd4722cdf7,12-9
+Bushra,93212 52633,khansaba1594@gmail.com,FDE,Active,Nalasopara east,f4fc732c-86b0-4ebd-a40a-c6076a7bf341,10-9
+Dr warisha, 86975 72915,drwarishaafreen@gmail.com,Doctor,Inactive,Nalasopara east,f4fc732c-86b0-4ebd-a40a-c6076a7bf341,-
+Dr suruchi,92841 03209,suru.raut786@gmail.com ,Doctor,Active,Nalasopara east,f4fc732c-86b0-4ebd-a40a-c6076a7bf341,10-7
+Shilpa, 80877 79849,ravigangar09@gmail.com ,Assistant,Active,Nalasopara east,f4fc732c-86b0-4ebd-a40a-c6076a7bf341,12-9
+SAYALI,91677 63416,satamsayali6@gmail.com ,FDE,Active,Kandivali,06c42aa4-a1ba-4db0-b50a-2d072e067e37,12-9
+NANDA TAI, 7498 839 848,dawareneel76@gmail.com,Assistant,Active,Kandivali,06c42aa4-a1ba-4db0-b50a-2d072e067e37,10-7
+VARSHA,90822 01531,vm5534275@gmail.com ,Assistant,Active,Kandivali,06c42aa4-a1ba-4db0-b50a-2d072e067e37,12-9
+DR JASON, 98347 35723,jasonraja747@gmail.com,Doctor,Active,Kandivali,06c42aa4-a1ba-4db0-b50a-2d072e067e37,12-9
+DR BATUL,84199 24098,batulneemuchwala2015@gmail.com ,Doctor,Active,Kandivali,06c42aa4-a1ba-4db0-b50a-2d072e067e37,10-7
+DR ALLINA, 98677 57363,almeidaallina7@gmail.com ,Doctor,Active,Virar east,46bb8505-3b42-45d3-b740-83c6bdacad27,12-9
+POONAM,86522 15544,pmj0382@gmail.com,Assistant,Active,bhayandar,9aeb6614-6aa0-4bfc-b624-1ea20e78be6a,12-9
+SANDHYA,95277 12765,sandhyasarjerao97@gmail.com ,FDE,Active,Virar east,46bb8505-3b42-45d3-b740-83c6bdacad27,2-9
+ANNU,87668 20357,annumourya8766@gmail.com,FDE,Active,Virar east,46bb8505-3b42-45d3-b740-83c6bdacad27,10-5
+TANVI,878 839 9874,berdetanvi101@gmail.com ,Assistant,Active,Virar east,46bb8505-3b42-45d3-b740-83c6bdacad27,12-9
+AANCHAL, 80100 48425,aachaltiwari313@gmail.com ,FDE,Active,virar west,797280bc-4bbb-42f2-b853-3713fcf12c49,12-9
+KALPANA,90763 13525,kalpanadurgavale16@gmail.com,FDE,Active,Virar west,797280bc-4bbb-42f2-b853-3713fcf12c49,12-9
+PRATIMA,93734 77739,gpratima524@gmail.com,Assistant,Active,Virar west,797280bc-4bbb-42f2-b853-3713fcf12c49,12-9
+DR KRUSHALI,820 974 5949,krushaligehlot21@gmail.com ,Doctor,Active,Virar west,797280bc-4bbb-42f2-b853-3713fcf12c49,12-9
+DR DIPASHREE,94055 44118,dipashridasharathlawate1252@gmail.com ,Doctor,Active,Virar east,46bb8505-3b42-45d3-b740-83c6bdacad27,10-5
+SHIKHA, 89283 56387,shikhakaran6268@gmail.com ,FDE,Active,Mira road,1debbfb1-e9e5-4b99-b2e7-a7c96b645201,12-10
+JABEEN MAM, 70451 62532,dirayat1987@gmail.com ,LAB,Active,Mira road,1debbfb1-e9e5-4b99-b2e7-a7c96b645201,
+SADAF, 93261 57452,Sadafsalmansami@gmail.com ,LAB,Active,Mira road,1debbfb1-e9e5-4b99-b2e7-a7c96b645201,
+MAHEK,91524 55485,vohramahek3@gmail.com,LAB,Active,Mira road,1debbfb1-e9e5-4b99-b2e7-a7c96b645201,
+SADHANA,9580470804,csadhana230@gmail.com ,LAB,Active,Mira road,1debbfb1-e9e5-4b99-b2e7-a7c96b645201,
+AAMINA,91363 94589,ammokhan150180@gmail.com ,Assistant,Active,Mira road,1debbfb1-e9e5-4b99-b2e7-a7c96b645201,1-10
+SONALI, 82371 56722,Jhasonali365@gmail.com ,Assistant,Active,Mira road,1debbfb1-e9e5-4b99-b2e7-a7c96b645201,10-7
+SAHIBA, 89835 30815,Idrishim919@gmail.com ,Assistant,Active,Mira road,1debbfb1-e9e5-4b99-b2e7-a7c96b645201,12-9
+YASMIN,70451 54448,chahatsheikh56@gmail.com,Assistant,Active,Mira road,1debbfb1-e9e5-4b99-b2e7-a7c96b645201,1-10
+DR ANUBHAV, 7606 880 050,anubhava.jaiminee@gmail.com ,Doctor,Active,Mira road,1debbfb1-e9e5-4b99-b2e7-a7c96b645201,11-8
+DR MRINAL,99308 45541,mrinaldayanand@gmail.com ,Doctor,Active,Mira road,1debbfb1-e9e5-4b99-b2e7-a7c96b645201,10-7
+DR SAIHA, 78753 54904,azmisaiha12@gmail.com ,Doctor,Active,Mira road,1debbfb1-e9e5-4b99-b2e7-a7c96b645201,11-5
+DR UMAR,95960 31970,zubiganaie@gmail.com ,Doctor,Active,Mira road,1debbfb1-e9e5-4b99-b2e7-a7c96b645201,1-10
+DR SWAPNIL,90291 73229,Swapnilpise15@gmail.com ,Doctor,Active,Mira road,1debbfb1-e9e5-4b99-b2e7-a7c96b645201,12-9
+DR DIMPLE, 93163 60692,rakhechadimple.dr@gmail.com ,Doctor,Active,Mira road,1debbfb1-e9e5-4b99-b2e7-a7c96b645201,1-10
+DR SIREEN, 88754 67522,sireenq.00@gmail.com ,Doctor,Active,Mira road,1debbfb1-e9e5-4b99-b2e7-a7c96b645201,1-10
+DR PURVA, 91462 50922,jichkarpurva@gmail.com ,Doctor,Active,Mira road,1debbfb1-e9e5-4b99-b2e7-a7c96b645201,12-9
+SALMAN BHAIYA, 80833 96707,Salmanali9695@gmail.com ,Admin,Active,Mira road,1debbfb1-e9e5-4b99-b2e7-a7c96b645201,12-9
+JYOTI TAI,98196 08799,Jyoti.b.rajput@gmail.com ,FDE,Active,Vasai,43cfdf79-86a3-4493-b8e8-2fa02a2db885,8-2
+KAMINI,73851 01882,kaminisakpal49142@gmail.com,Assistant,Active,Jogeshwari,07fcdabb-2edc-43d7-a5b7-939ea6fa96df,10-7
+VINOD, 93704 07741,vinodprajapati.R@gmail.com ,LAB,Active,vasai,43cfdf79-86a3-4493-b8e8-2fa02a2db885,8-1
+SARJEENA,95451 73597,sarjeenashaikh34@gmail.com ,Assistant,Active,vasai,43cfdf79-86a3-4493-b8e8-2fa02a2db885,10-7
+DR RAVALI,83790 55982,ravalimanchi123@gmail.com ,Doctor,Active,vasai,43cfdf79-86a3-4493-b8e8-2fa02a2db885,12-9
+DR ASHVINI,96727 89850,khandelwalashvini222@gmail.com,Doctor,Active,vasai,43cfdf79-86a3-4493-b8e8-2fa02a2db885,10-7
+POONAM (jogeshwari),85913 83264,poonamdhivar979@gmail.com,Assistant,Active,jogeshwari,07fcdabb-2edc-43d7-a5b7-939ea6fa96df,12-9
+SHABNAM, 70390 52563,sayyedshabnam78600@gmail.com,Assistant,Active,jogeshwari,07fcdabb-2edc-43d7-a5b7-939ea6fa96df,12-9
+DR RAVINA, 80974 48841,ravinakhade22@gmail.com,Doctor,Active,jogeshwari,07fcdabb-2edc-43d7-a5b7-939ea6fa96df,10-7
+DR DIVYA,84220 53959,divyanarsule@gmail.com ,Doctor,Active,jogeshwari,07fcdabb-2edc-43d7-a5b7-939ea6fa96df,12-9
+MUSKAN, 98341 86771,takmuskan1426@gmail.com,FDE,Active,bhayandar,9aeb6614-6aa0-4bfc-b624-1ea20e78be6a,12-9
+POORNIMA TAI,98923 24370,shetyepornima@gmail.com ,Assistant,Active,bhayandar,9aeb6614-6aa0-4bfc-b624-1ea20e78be6a,10-7
+DR KRUTIKA,80077 47707,krutikakamble31393@gmail.com ,Doctor,Active,bhayandar,9aeb6614-6aa0-4bfc-b624-1ea20e78be6a,12-9
+Mansi, 89282 49797,mansiyelonde5144@gmail.com,FDE,Active,Mira road,1debbfb1-e9e5-4b99-b2e7-a7c96b645201,7:30-3:30
+Urmila,8591811677,urmilarathod838@gmail.com,FDE,Active,vasai,43cfdf79-86a3-4493-b8e8-2fa02a2db885,12-9
+Monali,7506806838,Monalipatel505@gmail.com,FDE,Active,Mira road,1debbfb1-e9e5-4b99-b2e7-a7c96b645201,1-10
+Tamanna,8879554072,tamannaprandw@gmail.com,Assistant,Active,Mira road,1debbfb1-e9e5-4b99-b2e7-a7c96b645201,1-10
+Fatima,8879884369,fatimamohiddin12@gmail.com,LAB,Active,Mira road,1debbfb1-e9e5-4b99-b2e7-a7c96b645201,5-10
+Dr deepak,9529829774,de91784@gmail.com,Doctor,Active,Nalasopara east,f4fc732c-86b0-4ebd-a40a-c6076a7bf341,12-9
+Dr debjani,60009 34742,de91784@gmail.com,Doctor,Active,Kandivali,06c42aa4-a1ba-4db0-b50a-2d072e067e37,12-9
+Sapna,9324032750,sapnagaikwad361@gmail.com,Assistant,Active,Virar east,46bb8505-3b42-45d3-b740-83c6bdacad27,10-7
+Pooja,9137899683,poojalondhe060@gmail.com,Assistant,Active,thane,79bfb03f-b813-46c9-bcc5-f6fd4722cdf7,10-7
+Rajeshree,9021974543,rajeshrimahadeshwar738@gmail.com,Assistant,Active,vasai,43cfdf79-86a3-4493-b8e8-2fa02a2db885,12-9
+Priyanka, 721 976 5026,pinkyyadav02709@gmail.com,lab,Active,Mira road,1debbfb1-e9e5-4b99-b2e7-a7c96b645201,12-8

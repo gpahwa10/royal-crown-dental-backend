@@ -5,6 +5,7 @@ interface GenerateTokenPayload {
   clinicId: string | null;
   roles: string[];
   isSuperAdmin: boolean;
+  mustChangePassword?: boolean;
 }
 
 export const generateToken = (

@@ -2,11 +2,37 @@ import { and, desc, eq, ilike, or, SQL } from "drizzle-orm";
 import { db } from "../../db/client";
 import { clinics } from "../../db/schema/clinic";
 import {
+    getClinicWorkingHours,
+    getClinicWorkingHoursByClinicIds,
+    replaceClinicWorkingHours,
+    type ClinicDayHours,
+} from "../scheduling/scheduling.service";
+import {
     generateClinicCode,
     getNextLegacyClinicId,
 } from "./clinics.utils";
 
 export type ClinicRow = typeof clinics.$inferSelect;
+export type ClinicWithHours = ClinicRow & { workingHours: ClinicDayHours[] };
+
+const withWorkingHours = async (
+    clinic: ClinicRow
+): Promise<ClinicWithHours> => ({
+    ...clinic,
+    workingHours: await getClinicWorkingHours(clinic.id),
+});
+
+const withWorkingHoursMany = async (
+    rows: ClinicRow[]
+): Promise<ClinicWithHours[]> => {
+    const hoursMap = await getClinicWorkingHoursByClinicIds(
+        rows.map((r) => r.id)
+    );
+    return rows.map((clinic) => ({
+        ...clinic,
+        workingHours: hoursMap.get(clinic.id) ?? [],
+    }));
+};
 
 export interface CreateClinicInput {
     clinicName: string;
@@ -102,14 +128,17 @@ export const listClinics = async (options: ListClinicsOptions = {}) => {
 
     const whereClause = filters.length > 0 ? and(...filters) : undefined;
 
-    return db
+    const rows = await db
         .select()
         .from(clinics)
         .where(whereClause)
         .orderBy(desc(clinics.createdAt));
+
+    return withWorkingHoursMany(rows);
 };
 
-export const getClinicById = async (id: string) => getClinicRecord(id);
+export const getClinicById = async (id: string) =>
+    withWorkingHours(await getClinicRecord(id));
 
 export const createClinic = async (input: CreateClinicInput) => {
     const now = new Date();
@@ -148,7 +177,21 @@ export const createClinic = async (input: CreateClinicInput) => {
         return created;
     });
 
-    return clinic;
+    await replaceClinicWorkingHours(
+        clinic.id,
+        Array.from({ length: 7 }, (_, dayOfWeek) =>
+            dayOfWeek === 0
+                ? { dayOfWeek, isClosed: true }
+                : {
+                      dayOfWeek,
+                      isClosed: false,
+                      openTime: "10:00",
+                      closeTime: "21:00",
+                  }
+        )
+    );
+
+    return withWorkingHours(clinic);
 };
 
 export const updateClinic = async (id: string, input: UpdateClinicInput) => {
@@ -182,7 +225,7 @@ export const updateClinic = async (id: string, input: UpdateClinicInput) => {
         .where(eq(clinics.id, id))
         .returning();
 
-    return updated;
+    return withWorkingHours(updated);
 };
 
 export const deleteClinic = async (id: string) => {
@@ -201,5 +244,13 @@ export const deleteClinic = async (id: string) => {
         .where(eq(clinics.id, id))
         .returning();
 
-    return updated;
+    return withWorkingHours(updated);
 };
+
+export const getClinicHours = (clinicId: string) =>
+    getClinicWorkingHours(clinicId);
+
+export const putClinicHours = (
+    clinicId: string,
+    days: Parameters<typeof replaceClinicWorkingHours>[1]
+) => replaceClinicWorkingHours(clinicId, days);

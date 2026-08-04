@@ -46,7 +46,10 @@ const assertSuperAdminCanLogin = (admin: SuperAdminRecord) => {
     }
 };
 
-const buildEmployeeToken = async (employee: EmployeeRecord) => {
+const buildEmployeeToken = async (
+    employee: EmployeeRecord,
+    mustChangePassword?: boolean
+) => {
     const roles = await getEmployeeRoleNames(employee.id);
 
     if (roles.length === 0) {
@@ -58,8 +61,23 @@ const buildEmployeeToken = async (employee: EmployeeRecord) => {
         clinicId: employee.clinicId,
         roles,
         isSuperAdmin: false,
+        mustChangePassword:
+            mustChangePassword ?? employee.mustChangePassword,
     });
 };
+
+const buildSuperAdminToken = (
+    admin: SuperAdminRecord,
+    mustChangePassword?: boolean
+) =>
+    generateToken({
+        id: admin.id,
+        clinicId: null,
+        roles: [],
+        isSuperAdmin: true,
+        mustChangePassword:
+            mustChangePassword ?? admin.mustChangePassword,
+    });
 
 export interface CreateSuperAdminInput {
     name: string;
@@ -84,11 +102,20 @@ export const login = async (email: string, password: string) => {
             throw new Error("Invalid credentials");
         }
 
+        const now = new Date();
+        await db
+            .update(employees)
+            .set({ lastLoginAt: now, updatedAt: now })
+            .where(eq(employees.id, employee.id));
+
         const roles = await getEmployeeRoleNames(employee.id);
         const token = await buildEmployeeToken(employee);
 
         return {
-            user: omitPassword(employee),
+            user: omitPassword({
+                ...employee,
+                lastLoginAt: now,
+            }),
             token,
             roles,
             isSuperAdmin: false,
@@ -97,6 +124,7 @@ export const login = async (email: string, password: string) => {
                 roles,
             }),
             clinicId: employee.clinicId,
+            mustChangePassword: employee.mustChangePassword,
         };
     }
 
@@ -116,20 +144,25 @@ export const login = async (email: string, password: string) => {
         throw new Error("Invalid credentials");
     }
 
-    const token = generateToken({
-        id: admin.id,
-        clinicId: null,
-        roles: [],
-        isSuperAdmin: true,
-    });
+    const now = new Date();
+    await db
+        .update(superAdmins)
+        .set({ lastLoginAt: now, updatedAt: now })
+        .where(eq(superAdmins.id, admin.id));
+
+    const token = buildSuperAdminToken(admin);
 
     return {
-        user: omitPassword(admin),
+        user: omitPassword({
+            ...admin,
+            lastLoginAt: now,
+        }),
         token,
         roles: [] as string[],
         isSuperAdmin: true,
         hasPlatformAdminAccess: true,
         clinicId: null,
+        mustChangePassword: admin.mustChangePassword,
     };
 };
 
@@ -151,6 +184,7 @@ export const createSuperAdmin = async (input: CreateSuperAdminInput) => {
             name: input.name,
             email: input.email,
             password: hashedPassword,
+            mustChangePassword: true,
         })
         .returning();
 
@@ -164,4 +198,118 @@ export const hasSuperAdmins = async () => {
 
 export const logout = async () => {
     return { message: "Logged out successfully" };
+};
+
+export const changePassword = async (input: {
+    userId: string;
+    isSuperAdmin: boolean;
+    currentPassword?: string;
+    newPassword: string;
+}) => {
+    if (input.isSuperAdmin) {
+        const [admin] = await db
+            .select()
+            .from(superAdmins)
+            .where(eq(superAdmins.id, input.userId));
+
+        if (!admin) {
+            throw new Error("User not found");
+        }
+
+        if (admin.mustChangePassword) {
+            // First login: current password optional (already authenticated)
+            if (input.currentPassword) {
+                const valid = await bcrypt.compare(
+                    input.currentPassword,
+                    admin.password
+                );
+                if (!valid) {
+                    throw new Error("Current password is incorrect");
+                }
+            }
+        } else {
+            if (!input.currentPassword) {
+                throw new Error("Current password is required");
+            }
+            const valid = await bcrypt.compare(
+                input.currentPassword,
+                admin.password
+            );
+            if (!valid) {
+                throw new Error("Current password is incorrect");
+            }
+        }
+
+        const password = await hashPassword(input.newPassword);
+        const [updated] = await db
+            .update(superAdmins)
+            .set({
+                password,
+                mustChangePassword: false,
+                updatedAt: new Date(),
+            })
+            .where(eq(superAdmins.id, admin.id))
+            .returning();
+
+        const token = buildSuperAdminToken(updated, false);
+
+        return {
+            message: "Password updated successfully",
+            mustChangePassword: false,
+            token,
+            user: omitPassword(updated),
+        };
+    }
+
+    const [employee] = await db
+        .select()
+        .from(employees)
+        .where(eq(employees.id, input.userId));
+
+    if (!employee) {
+        throw new Error("User not found");
+    }
+
+    if (employee.mustChangePassword) {
+        if (input.currentPassword) {
+            const valid = await bcrypt.compare(
+                input.currentPassword,
+                employee.password
+            );
+            if (!valid) {
+                throw new Error("Current password is incorrect");
+            }
+        }
+    } else {
+        if (!input.currentPassword) {
+            throw new Error("Current password is required");
+        }
+        const valid = await bcrypt.compare(
+            input.currentPassword,
+            employee.password
+        );
+        if (!valid) {
+            throw new Error("Current password is incorrect");
+        }
+    }
+
+    const password = await hashPassword(input.newPassword);
+    const [updated] = await db
+        .update(employees)
+        .set({
+            password,
+            mustChangePassword: false,
+            updatedAt: new Date(),
+        })
+        .where(eq(employees.id, employee.id))
+        .returning();
+
+    const token = await buildEmployeeToken(updated, false);
+
+    return {
+        message: "Password updated successfully",
+        mustChangePassword: false,
+        token,
+        user: omitPassword(updated),
+    };
 };

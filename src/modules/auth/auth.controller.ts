@@ -1,8 +1,12 @@
 import { Response } from "express";
 import { AuthRequest } from "../../middleware/auth.middleware";
-import { createSuperAdmin, login, logout } from "./auth.service";
+import { changePassword, createSuperAdmin, login, logout } from "./auth.service";
 import { handleError } from "./auth.utils";
-import { createSuperAdminSchema, loginSchema } from "./auth.validation";
+import {
+    changePasswordSchema,
+    createSuperAdminSchema,
+    loginSchema,
+} from "./auth.validation";
 
 export const loginHandler = async (req: AuthRequest, res: Response) => {
     try {
@@ -32,6 +36,32 @@ export const createSuperAdminHandler = async (
 export const logoutHandler = async (_req: AuthRequest, res: Response) => {
     try {
         const result = await logout();
+
+        return res.status(200).json({ success: true, data: result });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
+export const changePasswordHandler = async (
+    req: AuthRequest,
+    res: Response
+) => {
+    try {
+        if (!req.employee?.id) {
+            return res.status(401).json({
+                success: false,
+                message: "Unauthorized access",
+            });
+        }
+
+        const body = changePasswordSchema.parse(req.body);
+        const result = await changePassword({
+            userId: req.employee.id,
+            isSuperAdmin: Boolean(req.employee.isSuperAdmin),
+            currentPassword: body.currentPassword,
+            newPassword: body.newPassword,
+        });
 
         return res.status(200).json({ success: true, data: result });
     } catch (error) {

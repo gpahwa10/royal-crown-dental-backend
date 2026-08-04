@@ -6,6 +6,7 @@ import {
     assertAppointmentShiftAccess,
     createAppointment,
     getAppointmentById,
+    getAvailableDoctorsForSlot,
     listAppointments,
     shiftAppointmentClinic,
     updateAppointment,
@@ -14,6 +15,7 @@ import {
 import { handleError } from "./appointments.utils";
 import {
     appointmentParamsSchema,
+    availableDoctorsQuerySchema,
     createAppointmentSchema,
     listAppointmentsQuerySchema,
     shiftAppointmentClinicSchema,
@@ -30,6 +32,47 @@ const resolveClinicId = (
     }
 
     return req.employee?.clinicId;
+};
+
+export const listAvailableDoctorsHandler = async (
+    req: AuthRequest,
+    res: Response
+) => {
+    try {
+        const query = availableDoctorsQuerySchema.parse(req.query);
+
+        const clinicId = hasPlatformAdminAccess(req.employee)
+            ? query.clinicId
+            : req.employee?.clinicId ?? query.clinicId;
+
+        if (!clinicId) {
+            return res.status(400).json({
+                success: false,
+                message: "clinicId is required",
+            });
+        }
+
+        if (
+            !hasPlatformAdminAccess(req.employee) &&
+            clinicId !== req.employee?.clinicId
+        ) {
+            return res.status(403).json({
+                success: false,
+                message: "You cannot access appointments from another clinic",
+            });
+        }
+
+        const doctors = await getAvailableDoctorsForSlot({
+            clinicId,
+            date: query.date,
+            time: query.time,
+            durationMinutes: query.durationMinutes,
+        });
+
+        return res.status(200).json({ success: true, data: doctors });
+    } catch (error) {
+        return handleError(res, error);
+    }
 };
 
 export const createAppointmentHandler = async (

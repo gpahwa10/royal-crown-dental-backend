@@ -170,3 +170,35 @@ export const editEmployeeSchema = z
     export const activateEmployeeParamsSchema = z.object({
         id: z.uuid(),
     });
+const hhmmSchema = z
+    .string()
+    .regex(/^\d{2}:\d{2}$/, "must be HH:mm")
+    .nullable()
+    .optional();
+
+export const employeeDayHoursSchema = z
+    .object({
+        dayOfWeek: z.number().int().min(0).max(6),
+        isOff: z.boolean().optional(),
+        startTime: hhmmSchema,
+        endTime: hhmmSchema,
+    })
+    .superRefine((day, ctx) => {
+        if (day.isOff === true) {
+            return;
+        }
+        if (!day.startTime || !day.endTime) {
+            ctx.addIssue({
+                code: "custom",
+                message: "startTime and endTime are required when not off",
+            });
+        }
+    });
+
+export const replaceEmployeeWorkingHoursSchema = z.object({
+    days: z.array(employeeDayHoursSchema).min(1).max(7),
+});
+
+export const employeeIdParamSchema = z.object({
+    id: z.uuid(),
+});

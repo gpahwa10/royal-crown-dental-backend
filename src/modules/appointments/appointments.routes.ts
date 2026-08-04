@@ -4,6 +4,7 @@ import {
     createAppointmentHandler,
     getAppointmentByIdHandler,
     listAppointmentsHandler,
+    listAvailableDoctorsHandler,
     shiftAppointmentClinicHandler,
     updateAppointmentHandler,
     updateAppointmentStatusHandler,
@@ -15,6 +16,7 @@ router.use(authenticate);
 
 router.post("/", createAppointmentHandler);
 router.get("/", listAppointmentsHandler);
+router.get("/available-doctors", listAvailableDoctorsHandler);
 router.get("/:id", getAppointmentByIdHandler);
 router.put("/:id", updateAppointmentHandler);
 router.patch("/:id/status", updateAppointmentStatusHandler);

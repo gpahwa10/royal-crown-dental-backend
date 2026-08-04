@@ -10,7 +10,9 @@ import {
     blockEmployee,
     editEmployee,
     getEmployeeById,
+    getEmployeeHours,
     listEmployees,
+    putEmployeeHours,
     registerHR,
     registerStaff,
     suspendEmployee,
@@ -20,6 +22,7 @@ import { handleError } from "./employees.utils";
 import {
     editEmployeeParamsSchema,
     editEmployeeSchema,
+    employeeIdParamSchema,
     listEmployeesQuerySchema,
     registerHRSchema,
     registerStaffSchema,
@@ -27,6 +30,7 @@ import {
     suspendEmployeeSchema,
     suspendEmployeeParamsSchema,
     activateEmployeeParamsSchema,
+    replaceEmployeeWorkingHoursSchema,
 } from "./employees.validation";
 
 
@@ -246,6 +250,70 @@ export const activateEmployeeHandler = async (req: AuthRequest, res: Response) =
         await activateEmployee(id);
         return res.status(200).json({ success: true, data: { id: existing!.id, isActive: existing!.isActive } });
         } catch (error) {
+        return handleError(res, error);
+    }
+};
+export const getEmployeeWorkingHoursHandler = async (
+    req: AuthRequest,
+    res: Response
+) => {
+    try {
+        const { id } = employeeIdParamSchema.parse(req.params);
+        const existing = await getEmployeeById(id);
+        if (!existing) {
+            return res.status(404).json({
+                success: false,
+                message: "Employee not found",
+            });
+        }
+        if (
+            !hasPlatformAdminAccess(req.employee) &&
+            existing.clinicId !== req.employee?.clinicId
+        ) {
+            return res.status(403).json({
+                success: false,
+                message: "You cannot view employees from another clinic",
+            });
+        }
+
+        const workingHours = await getEmployeeHours(id);
+        return res.status(200).json({ success: true, data: workingHours });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
+export const putEmployeeWorkingHoursHandler = async (
+    req: AuthRequest,
+    res: Response
+) => {
+    try {
+        const { id } = employeeIdParamSchema.parse(req.params);
+        const body = replaceEmployeeWorkingHoursSchema.parse(req.body);
+        const existing = await getEmployeeById(id);
+        if (!existing) {
+            return res.status(404).json({
+                success: false,
+                message: "Employee not found",
+            });
+        }
+        if (
+            !hasPlatformAdminAccess(req.employee) &&
+            existing.clinicId !== req.employee?.clinicId
+        ) {
+            return res.status(403).json({
+                success: false,
+                message: "You cannot edit employees from another clinic",
+            });
+        }
+
+        const workingHours = await putEmployeeHours(id, body.days);
+        return res.status(200).json({
+            success: true,
+            message: "Employee working hours updated",
+            data: workingHours,
+        });
+    } catch (error) {
         return handleError(res, error);
     }
 };

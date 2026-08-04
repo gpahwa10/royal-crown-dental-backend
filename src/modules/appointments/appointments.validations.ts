@@ -106,3 +106,12 @@ export const updateAppointmentStatusSchema = z.object({
 export const shiftAppointmentClinicSchema = z.object({
     newClinicId: z.uuid(),
 });
+
+export const availableDoctorsQuerySchema = z.object({
+    clinicId: z.uuid(),
+    date: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, "date must be YYYY-MM-DD"),
+    time: z.string().regex(/^\d{2}:\d{2}$/, "time must be HH:mm"),
+    durationMinutes: z.coerce.number().int().positive().max(480).optional(),
+});

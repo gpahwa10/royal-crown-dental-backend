@@ -60,3 +60,32 @@ export const listClinicsQuerySchema = z.object({
         .transform((value) => value === "true"),
     search: z.string().trim().optional(),
 });
+
+const hhmmSchema = z
+    .string()
+    .regex(/^\d{2}:\d{2}$/, "must be HH:mm")
+    .nullable()
+    .optional();
+
+export const clinicDayHoursSchema = z
+    .object({
+        dayOfWeek: z.number().int().min(0).max(6),
+        isClosed: z.boolean().optional(),
+        openTime: hhmmSchema,
+        closeTime: hhmmSchema,
+    })
+    .superRefine((day, ctx) => {
+        if (day.isClosed === true) {
+            return;
+        }
+        if (!day.openTime || !day.closeTime) {
+            ctx.addIssue({
+                code: "custom",
+                message: "openTime and closeTime are required when not closed",
+            });
+        }
+    });
+
+export const replaceClinicWorkingHoursSchema = z.object({
+    days: z.array(clinicDayHoursSchema).min(1).max(7),
+});

@@ -1,12 +1,15 @@
 import "dotenv/config";
-import { seedClinics } from "./seed/seed-clinics";
+import { loadClinicsFromCsv, seedClinics } from "./seed/seed-clinics";
 
 const main = async () => {
     if (!process.env.DATABASE_URL) {
         throw new Error("DATABASE_URL is not set");
     }
 
-    const clinicMap = await seedClinics();
+    const records = loadClinicsFromCsv();
+    console.log(`Loaded ${records.length} clinics from CSV.`);
+
+    const clinicMap = await seedClinics(records);
     console.log(`\nSeeded ${clinicMap.size} clinics.`);
 };
 

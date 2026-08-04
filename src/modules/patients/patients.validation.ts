@@ -138,7 +138,7 @@ export const blacklistPatientSchema = z.object({
 
 /** Bulk import body — row-level validation happens in the service for partial success. */
 export const bulkCreatePatientsSchema = z.object({
-    patients: z.array(z.record(z.string(), z.unknown())).min(1).max(500),
+    patients: z.array(z.record(z.string(), z.unknown())).min(1).max(600),
 });
 
 export const patientListQuerySchema = z.object({

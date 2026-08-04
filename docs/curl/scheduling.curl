@@ -1,0 +1,52 @@
+# Scheduling / working hours curls
+#
+# Prerequisites:
+#   export BASE=http://localhost:4000
+#   export TOKEN=...   # from POST /api/auth/login
+#   export CLINIC_ID=...
+#   export EMPLOYEE_ID=...
+
+# --- Clinic working hours ---
+curl -s "$BASE/api/clinics/$CLINIC_ID" \
+  -H "Authorization: Bearer $TOKEN" | jq '.data.workingHours'
+
+curl -s -X PUT "$BASE/api/clinics/$CLINIC_ID/working-hours" \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{
+    "days": [
+      {"dayOfWeek":0,"isClosed":true},
+      {"dayOfWeek":1,"openTime":"10:00","closeTime":"21:00","isClosed":false},
+      {"dayOfWeek":2,"openTime":"10:00","closeTime":"21:00","isClosed":false},
+      {"dayOfWeek":3,"openTime":"10:00","closeTime":"21:00","isClosed":false},
+      {"dayOfWeek":4,"openTime":"10:00","closeTime":"21:00","isClosed":false},
+      {"dayOfWeek":5,"openTime":"10:00","closeTime":"21:00","isClosed":false},
+      {"dayOfWeek":6,"openTime":"10:00","closeTime":"21:00","isClosed":false}
+    ]
+  }'
+
+# --- Employee working hours ---
+curl -s "$BASE/api/employees/list?clinicId=$CLINIC_ID&limit=5" \
+  -H "Authorization: Bearer $TOKEN" | jq '.data.items[0].workingHours'
+
+curl -s -X PUT "$BASE/api/employees/$EMPLOYEE_ID/working-hours" \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{
+    "days": [
+      {"dayOfWeek":0,"isOff":true},
+      {"dayOfWeek":1,"startTime":"10:00","endTime":"19:00","isOff":false},
+      {"dayOfWeek":2,"startTime":"10:00","endTime":"19:00","isOff":false},
+      {"dayOfWeek":3,"startTime":"10:00","endTime":"19:00","isOff":false},
+      {"dayOfWeek":4,"startTime":"10:00","endTime":"19:00","isOff":false},
+      {"dayOfWeek":5,"startTime":"10:00","endTime":"19:00","isOff":false},
+      {"dayOfWeek":6,"startTime":"10:00","endTime":"19:00","isOff":false}
+    ]
+  }'
+
+# --- Available doctors ---
+curl -s "$BASE/api/appointments/available-doctors?clinicId=$CLINIC_ID&date=2026-08-04&time=10:15" \
+  -H "Authorization: Bearer $TOKEN"
+
+# --- Change password ---
+curl -s -X POST "$BASE/api/auth/change-password" \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"currentPassword":"Employee@123","newPassword":"Employee@456"}'

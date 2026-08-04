@@ -18,11 +18,14 @@ export const handleError = (res: Response, error: unknown) => {
 
     const status =
         message === "Invalid credentials" ||
+        message === "Current password is incorrect" ||
         message.includes("not configured")
             ? 400
-            : message.includes("already exists")
-              ? 409
-              : 400;
+            : message === "User not found"
+              ? 404
+              : message.includes("already exists")
+                ? 409
+                : 400;
 
     return res.status(status).json({ success: false, message });
 };

@@ -11,6 +11,7 @@
     "seed:clinics": "ts-node-dev --transpile-only -r dotenv/config src/scripts/seed-clinics.ts",
     "seed:inventory": "ts-node-dev --transpile-only -r dotenv/config src/scripts/seed-inventory.ts",
     "seed:employees": "ts-node-dev --transpile-only -r dotenv/config src/scripts/seed-employees.ts",
+    "seed:working-hours": "ts-node-dev --transpile-only -r dotenv/config src/scripts/seed-working-hours.ts",
     "seed:dev": "ts-node-dev --transpile-only -r dotenv/config src/scripts/seed-dev-credentials.ts",
     "seed:all": "ts-node-dev --transpile-only -r dotenv/config src/scripts/seed-all.ts"
   },

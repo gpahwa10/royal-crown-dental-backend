@@ -11,6 +11,12 @@ import {
     resolveRolesFromDesignation,
     SALT_ROUNDS,
 } from "../auth/auth.constants";
+import {
+    getEmployeeWorkingHours,
+    getEmployeeWorkingHoursByEmployeeIds,
+    replaceEmployeeWorkingHours,
+    type EmployeeDayHours,
+} from "../scheduling/scheduling.service";
 
 const SUPER_ADMIN_ROLE = "Super Admin";
 
@@ -186,17 +192,20 @@ export const registerEmployee = async (input: RegisterEmployeeInput) => {
             phone: input.phone ?? "",
             designation: input.designation,
             timings: input.timings,
+            mustChangePassword: true,
         })
         .returning();
 
     await assignRolesToEmployee(employee.id, uniqueRoles);
 
     const roles = await getEmployeeRoleNames(employee.id);
+    const workingHours = await getEmployeeWorkingHours(employee.id);
 
     return {
         employee: {
             ...omitPassword(employee),
             roles,
+            workingHours,
         },
     };
 };
@@ -286,10 +295,15 @@ export const listEmployees = async (options: ListEmployeesOptions = {}) => {
         .limit(limit)
         .offset(offset);
 
+    const hoursMap = await getEmployeeWorkingHoursByEmployeeIds(
+        employeesData.map((e) => e.id)
+    );
+
     const items = await Promise.all(
         employeesData.map(async (employee) => ({
             ...omitPassword(employee),
             roles: await getEmployeeRoleNames(employee.id),
+            workingHours: hoursMap.get(employee.id) ?? [],
         }))
     );
 
@@ -312,6 +326,19 @@ export const getEmployeeById = async (id: string) => {
         .where(eq(employees.id, id));
 
     return employee ?? null;
+};
+
+export const getEmployeeWithDetails = async (id: string) => {
+    const employee = await getEmployeeById(id);
+    if (!employee) {
+        return null;
+    }
+
+    return {
+        ...omitPassword(employee),
+        roles: await getEmployeeRoleNames(employee.id),
+        workingHours: await getEmployeeWorkingHours(employee.id),
+    };
 };
 
 export const editEmployee = async (input: EditEmployeeInput) => {
@@ -383,9 +410,20 @@ export const editEmployee = async (input: EditEmployeeInput) => {
         employee: {
             ...omitPassword(employee),
             roles,
+            workingHours: await getEmployeeWorkingHours(input.id),
         },
     };
 };
+
+export const getEmployeeHours = (employeeId: string) =>
+    getEmployeeWorkingHours(employeeId);
+
+export const putEmployeeHours = (
+    employeeId: string,
+    days: Parameters<typeof replaceEmployeeWorkingHours>[1]
+) => replaceEmployeeWorkingHours(employeeId, days);
+
+export type { EmployeeDayHours };
 
 export const blockEmployee = async (id: string, isBlocked: boolean) => {
     await db
