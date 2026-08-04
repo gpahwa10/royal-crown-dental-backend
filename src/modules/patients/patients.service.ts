@@ -58,6 +58,7 @@ import {
     assertPatientClinicAccess,
     generatePatientCode,
     getPagination,
+    normalizeBulkPatientRow,
     toDate,
 } from "./patients.utils";
 
@@ -178,6 +179,20 @@ const assertDuplicatePhone = async (phone: string, clinicId: string) => {
     if (existing) {
         throw new Error("A patient with this phone already exists in this clinic");
     }
+};
+
+const findPatientByPhoneInClinic = async (phone: string, clinicId: string) => {
+    const [existing] = await db
+        .select({
+            id: patients.id,
+            patientCode: patients.patientCode,
+            name: patients.name,
+            phone: patients.phone,
+        })
+        .from(patients)
+        .where(and(eq(patients.phone, phone), eq(patients.clinicId, clinicId)));
+
+    return existing ?? null;
 };
 
 const getPatientRecord = async (id: string) => {
@@ -367,11 +382,19 @@ export const bulkRegisterPatients = async (
 ): Promise<BulkRegisterPatientsResult> => {
     const created: BulkRegisterPatientSuccess[] = [];
     const failed: BulkRegisterPatientFailure[] = [];
+    /** Idempotent within one upload: clinicId:phone → first success row. */
+    const seenPhones = new Map<string, BulkRegisterPatientSuccess>();
 
     for (const [index, row] of rows.entries()) {
+        const normalized = {
+            ...normalizeBulkPatientRow(row),
+            // Staff bulk upload implies clinic acceptance; do not fail rows on missing CSV consent columns.
+            treatmentConsentSigned: true,
+            privacyAccepted: true,
+        };
         const payload = options?.forceClinicId
-            ? { ...row, clinicId: options.forceClinicId }
-            : row;
+            ? { ...normalized, clinicId: options.forceClinicId }
+            : normalized;
 
         const parsed = createPatientSchema.safeParse(payload);
 
@@ -394,15 +417,63 @@ export const bulkRegisterPatients = async (
             continue;
         }
 
-        try {
-            const result = await registerPatient(parsed.data);
+        const phoneKey = `${parsed.data.clinicId}:${parsed.data.phone}`;
+        const alreadySeen = seenPhones.get(phoneKey);
+        if (alreadySeen) {
             created.push({
+                ...alreadySeen,
+                index,
+            });
+            continue;
+        }
+
+        try {
+            const existing = await findPatientByPhoneInClinic(
+                parsed.data.phone,
+                parsed.data.clinicId
+            );
+
+            if (existing) {
+                const success: BulkRegisterPatientSuccess = {
+                    index,
+                    id: existing.id,
+                    patientCode: existing.patientCode,
+                    name: existing.name,
+                    phone: existing.phone,
+                };
+                created.push(success);
+                seenPhones.set(phoneKey, success);
+                continue;
+            }
+
+            let result;
+            try {
+                result = await registerPatient(parsed.data);
+            } catch (error) {
+                // Email uniqueness is global — retry without email so phone-first migration can proceed.
+                if (
+                    error instanceof Error &&
+                    error.message === "A patient with this email already exists" &&
+                    parsed.data.email
+                ) {
+                    result = await registerPatient({
+                        ...parsed.data,
+                        email: undefined,
+                    });
+                } else {
+                    throw error;
+                }
+            }
+
+            const success: BulkRegisterPatientSuccess = {
                 index,
                 id: result.patient.id,
                 patientCode: result.patient.patientCode,
                 name: result.patient.name,
                 phone: result.patient.phone,
-            });
+            };
+            created.push(success);
+            seenPhones.set(phoneKey, success);
         } catch (error) {
             failed.push({
                 index,

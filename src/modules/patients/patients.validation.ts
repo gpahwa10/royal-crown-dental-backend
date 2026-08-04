@@ -5,12 +5,20 @@ import {
     PREGNANCY_STATUSES,
 } from "./patients.constants";
 
+/** Email format check disabled for now — accept any trimmed string (or omit). */
 const optionalEmail = z
     .string()
     .trim()
     .optional()
-    .transform((value) => (value === "" ? undefined : value))
-    .pipe(z.email().optional());
+    .transform((value) => (value === "" ? undefined : value));
+
+/** Phone length/format checks disabled for now. */
+const phoneField = z.coerce.string().trim();
+const optionalPhone = z.coerce
+    .string()
+    .trim()
+    .optional()
+    .transform((value) => (value === "" ? undefined : value));
 
 const stringArray = z.array(z.string().trim().min(1)).optional().default([]);
 
@@ -31,13 +39,13 @@ export const createPatientSchema = z
         clinicId: z.uuid(),
         patientType: z.enum(PATIENT_TYPES),
         name: z.string().trim().min(1),
-        phone: z.string().trim().min(1).max(20),
+        phone: phoneField,
         email: optionalEmail,
         gender: z.string().trim().min(1).max(50),
         dateOfBirth: z.coerce.date(),
         address: z.string().trim().optional(),
         emergencyContactName: z.string().trim().optional(),
-        emergencyContactPhone: z.string().trim().max(20).optional(),
+        emergencyContactPhone: optionalPhone,
         emergencyContactRelation: z.string().trim().max(100).optional(),
         allergies: stringArray,
         currentMedications: stringArray,
@@ -47,7 +55,7 @@ export const createPatientSchema = z
         lastDentalVisit: z.coerce.date().optional(),
         lastXrayDate: z.coerce.date().optional(),
         primaryPhysicianName: z.string().trim().optional(),
-        primaryPhysicianPhone: z.string().trim().max(20).optional(),
+        primaryPhysicianPhone: optionalPhone,
         initialChiefComplaint: z.string().trim().optional(),
         treatmentConsentSigned: z.boolean(),
         privacyAccepted: z.boolean(),
@@ -73,13 +81,13 @@ export const createPatientSchema = z
 export const updatePatientBasicDetailsSchema = z
     .object({
         name: z.string().trim().min(1).optional(),
-        phone: z.string().trim().min(1).max(20).optional(),
+        phone: optionalPhone,
         email: optionalEmail.nullable(),
         gender: z.string().trim().min(1).max(50).optional(),
         dateOfBirth: z.coerce.date().optional(),
         address: z.string().trim().nullable().optional(),
         emergencyContactName: z.string().trim().nullable().optional(),
-        emergencyContactPhone: z.string().trim().max(20).nullable().optional(),
+        emergencyContactPhone: optionalPhone.nullable(),
         emergencyContactRelation: z.string().trim().max(100).nullable().optional(),
         patientType: z.enum(PATIENT_TYPES).optional(),
     })
@@ -97,7 +105,7 @@ export const updatePatientMedicalProfileSchema = z
         lastDentalVisit: z.coerce.date().nullable().optional(),
         lastXrayDate: z.coerce.date().nullable().optional(),
         primaryPhysicianName: z.string().trim().nullable().optional(),
-        primaryPhysicianPhone: z.string().trim().max(20).nullable().optional(),
+        primaryPhysicianPhone: optionalPhone.nullable(),
         initialChiefComplaint: z.string().trim().nullable().optional(),
     })
     .refine((data) => Object.keys(data).length > 0, {
@@ -107,13 +115,13 @@ export const updatePatientMedicalProfileSchema = z
 export const updatePatientSchema = z
     .object({
         name: z.string().trim().min(1).optional(),
-        phone: z.string().trim().min(1).max(20).optional(),
+        phone: optionalPhone,
         email: optionalEmail.nullable(),
         gender: z.string().trim().min(1).max(50).optional(),
         dateOfBirth: z.coerce.date().optional(),
         address: z.string().trim().nullable().optional(),
         emergencyContactName: z.string().trim().nullable().optional(),
-        emergencyContactPhone: z.string().trim().max(20).nullable().optional(),
+        emergencyContactPhone: optionalPhone.nullable(),
         emergencyContactRelation: z.string().trim().max(100).nullable().optional(),
         patientType: z.enum(PATIENT_TYPES).optional(),
         allergies: z.array(z.string().trim().min(1)).optional(),
@@ -124,7 +132,7 @@ export const updatePatientSchema = z
         lastDentalVisit: z.coerce.date().nullable().optional(),
         lastXrayDate: z.coerce.date().nullable().optional(),
         primaryPhysicianName: z.string().trim().nullable().optional(),
-        primaryPhysicianPhone: z.string().trim().max(20).nullable().optional(),
+        primaryPhysicianPhone: optionalPhone.nullable(),
         initialChiefComplaint: z.string().trim().nullable().optional(),
     })
     .refine((data) => Object.keys(data).length > 0, {

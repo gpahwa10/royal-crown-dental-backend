@@ -115,3 +115,125 @@ export const assertPatientClinicAccess = (
         throw new Error("You cannot access patients from another clinic");
     }
 };
+
+const toCamelCaseKey = (key: string) => {
+    const trimmed = key.trim();
+    if (!trimmed.includes("_")) {
+        return trimmed.charAt(0).toLowerCase() + trimmed.slice(1);
+    }
+
+    return trimmed
+        .toLowerCase()
+        .replace(/_([a-z0-9])/g, (_, char: string) => char.toUpperCase());
+};
+
+const emptyToUndefined = (value: unknown) => {
+    if (value === undefined || value === null) {
+        return undefined;
+    }
+
+    if (typeof value === "string" && value.trim() === "") {
+        return undefined;
+    }
+
+    return value;
+};
+
+const parseBulkBoolean = (value: unknown, defaultValue: boolean) => {
+    if (value === undefined || value === null || value === "") {
+        return defaultValue;
+    }
+
+    if (typeof value === "boolean") {
+        return value;
+    }
+
+    if (typeof value === "string") {
+        const normalized = value.trim().toLowerCase();
+        if (["true", "1", "yes", "y"].includes(normalized)) {
+            return true;
+        }
+        if (["false", "0", "no", "n"].includes(normalized)) {
+            return false;
+        }
+    }
+
+    return defaultValue;
+};
+
+const toStringArray = (value: unknown) => {
+    if (value === undefined || value === null || value === "") {
+        return undefined;
+    }
+
+    if (Array.isArray(value)) {
+        return value
+            .map((item) => (typeof item === "string" ? item.trim() : String(item)))
+            .filter(Boolean);
+    }
+
+    if (typeof value === "string") {
+        return value
+            .split(/[|,;]/)
+            .map((part) => part.trim())
+            .filter(Boolean);
+    }
+
+    return undefined;
+};
+
+/**
+ * Normalize a bulk-import row before createPatientSchema validation.
+ * Accepts snake_case keys, defaults missing consents to true, and cleans empty optionals.
+ */
+export const normalizeBulkPatientRow = (
+    row: Record<string, unknown>
+): Record<string, unknown> => {
+    const aliased: Record<string, unknown> = {};
+
+    for (const [key, value] of Object.entries(row)) {
+        const normalizedKey = toCamelCaseKey(key);
+        if (aliased[normalizedKey] === undefined) {
+            aliased[normalizedKey] = value;
+        }
+    }
+
+    const patientTypeRaw = emptyToUndefined(aliased.patientType);
+    const patientType =
+        typeof patientTypeRaw === "string"
+            ? patientTypeRaw.trim().toLowerCase()
+            : patientTypeRaw;
+
+    const pregnancyStatus = emptyToUndefined(aliased.pregnancyStatus);
+    const dentalAnxiety = emptyToUndefined(aliased.dentalAnxiety);
+
+    return {
+        ...aliased,
+        patientType,
+        email: emptyToUndefined(aliased.email),
+        gender: emptyToUndefined(aliased.gender),
+        dateOfBirth: emptyToUndefined(aliased.dateOfBirth),
+        address: emptyToUndefined(aliased.address),
+        emergencyContactName: emptyToUndefined(aliased.emergencyContactName),
+        emergencyContactPhone: emptyToUndefined(aliased.emergencyContactPhone),
+        emergencyContactRelation: emptyToUndefined(
+            aliased.emergencyContactRelation
+        ),
+        allergies: toStringArray(aliased.allergies),
+        currentMedications: toStringArray(aliased.currentMedications),
+        chronicConditions: toStringArray(aliased.chronicConditions),
+        pregnancyStatus,
+        dentalAnxiety,
+        lastDentalVisit: emptyToUndefined(aliased.lastDentalVisit),
+        lastXrayDate: emptyToUndefined(aliased.lastXrayDate),
+        primaryPhysicianName: emptyToUndefined(aliased.primaryPhysicianName),
+        primaryPhysicianPhone: emptyToUndefined(aliased.primaryPhysicianPhone),
+        initialChiefComplaint: emptyToUndefined(aliased.initialChiefComplaint),
+        // Bulk migration CSVs often omit consent columns — default to accepted.
+        treatmentConsentSigned: parseBulkBoolean(
+            aliased.treatmentConsentSigned,
+            true
+        ),
+        privacyAccepted: parseBulkBoolean(aliased.privacyAccepted, true),
+    };
+};
