@@ -9,6 +9,8 @@ import leadsRoutes from "./modules/leads/leads.routes";
 import appointmentsRoutes from "./modules/appointments/appointments.routes";
 import consultationsRoutes from "./modules/consultations/consultations.routes";
 import prescriptionsRoutes from "./modules/prescriptions/prescriptions.routes";
+import prescriptionSharingRoutes from "./modules/prescription-sharing/prescriptionSharing.routes";
+import { shareRedirectHandler } from "./modules/prescription-sharing/prescriptionSharing.controller";
 import labRequestsRoutes from "./modules/lab-requests/labRequests.routes";
 import dentalLabOrdersRoutes from "./modules/dental-lab/dentalLab.routes";
 import uploadsRoutes from "./modules/uploads/uploads.routes";
@@ -44,6 +46,9 @@ app.get('/health', (req, res) => {
     res.send('OK');
 });
 
+app.get("/share/:token", shareRedirectHandler);
+app.get("/api/share/:token", shareRedirectHandler);
+
 app.use("/api/auth", authRoutes);
 app.use("/api/employees", employeesRoutes);
 app.use("/api/clinics", clinicsRoutes);
@@ -52,6 +57,7 @@ app.use("/api/inventory", inventoryRoutes);
 app.use("/api/leads", leadsRoutes);
 app.use("/api/appointments", appointmentsRoutes);
 app.use("/api/consultations", consultationsRoutes);
+app.use("/api/prescriptions", prescriptionSharingRoutes);
 app.use("/api/prescriptions", prescriptionsRoutes);
 app.use("/api/lab-requests", labRequestsRoutes);
 app.use("/api/uploads", uploadsRoutes);

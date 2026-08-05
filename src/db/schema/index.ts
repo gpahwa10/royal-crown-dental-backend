@@ -11,6 +11,8 @@ export * from "./patientConsents";
 export * from "./consultations";
 export * from "./prescriptions";
 export * from "./prescriptionItems";
+export * from "./prescriptionFiles";
+export * from "./prescriptionShareLinks";
 export * from "./labRequests";
 export * from "./labRequestsTests";
 export * from "./labReports";
