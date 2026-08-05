@@ -9,6 +9,7 @@ export const ROLE_INVENTORY_MANAGER = "Inventory Manager";
 export const ROLE_HR_HEAD = "HR Head";
 export const ROLE_HR_ASSISTANT = "HR Assistant";
 export const ROLE_DIRECTOR = "Director";
+export const ROLE_RETAIL_HEAD = "Retail Head";
 
 /** Canonical clinic employee roles (matches frontend ROLES list + Director). */
 export const EMPLOYEE_ROLES = [
@@ -23,6 +24,7 @@ export const EMPLOYEE_ROLES = [
     ROLE_HR_HEAD,
     ROLE_HR_ASSISTANT,
     ROLE_DIRECTOR,
+    ROLE_RETAIL_HEAD,
 ] as const;
 
 export type EmployeeRole = (typeof EMPLOYEE_ROLES)[number];
@@ -48,6 +50,7 @@ export const DESIGNATION_TO_ROLES: Record<string, readonly string[]> = {
     [ROLE_HR_HEAD]: [ROLE_HR_HEAD],
     [ROLE_HR_ASSISTANT]: [ROLE_HR_ASSISTANT],
     [ROLE_DIRECTOR]: [ROLE_DIRECTOR],
+    [ROLE_RETAIL_HEAD]: [ROLE_RETAIL_HEAD],
     "Assistant & Reception": [ROLE_ASSISTANT, ROLE_RECEPTION],
     "Inventory manager": [ROLE_INVENTORY_MANAGER],
 };
@@ -86,7 +89,7 @@ export const isClinicStaffRole = (role: string): role is ClinicStaffRole =>
     (CLINIC_STAFF_ROLES as readonly string[]).includes(role);
 
 /** Employee roles with the same access level as a super admin account. */
-export const PLATFORM_ADMIN_ROLES = [ROLE_DIRECTOR] as const;
+export const PLATFORM_ADMIN_ROLES = [ROLE_DIRECTOR, ROLE_RETAIL_HEAD] as const;
 
 export type PlatformAdminRole = (typeof PLATFORM_ADMIN_ROLES)[number];
 
@@ -107,7 +110,7 @@ export const hasPlatformAdminAccess = (user?: {
     );
 };
 
-/** Super admin account or Director employee. */
+/** Super admin account or platform-admin employee (Director / Retail Head). */
 export const isSuperAdminOrDirector = hasPlatformAdminAccess;
 
 /** Clinic roles that can view the employee/doctor list (in addition to HR and platform admins). */

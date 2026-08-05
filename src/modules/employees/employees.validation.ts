@@ -6,6 +6,7 @@ import {
     resolveRolesFromDesignation,
     ROLE_DIRECTOR,
     ROLE_HR_HEAD,
+    ROLE_RETAIL_HEAD,
 } from "../auth/auth.constants";
 
 const optionalUuid = z.preprocess(
@@ -104,7 +105,11 @@ export const registerStaffSchema = registerBaseSchema
         };
     });
 
-const REGISTERABLE_LEADERSHIP_ROLES = [...HR_ROLES, ROLE_DIRECTOR] as const;
+const REGISTERABLE_LEADERSHIP_ROLES = [
+    ...HR_ROLES,
+    ROLE_DIRECTOR,
+    ROLE_RETAIL_HEAD,
+] as const;
 
 export const registerHRSchema = registerBaseSchema
     .extend({
