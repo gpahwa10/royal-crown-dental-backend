@@ -6,6 +6,7 @@ import {
     resolveRolesFromDesignation,
     ROLE_DIRECTOR,
     ROLE_HR_HEAD,
+    ROLE_RECEPTION,
     ROLE_RETAIL_HEAD,
 } from "../auth/auth.constants";
 
@@ -94,8 +95,9 @@ export const registerStaffSchema = registerBaseSchema
             data.designation ??
             (roles.length === 1
                 ? roles[0]
-                : roles.includes("Assistant") && roles.includes("Reception")
-                  ? "Assistant & Reception"
+                : roles.includes("Assistant") &&
+                    (roles.includes(ROLE_RECEPTION) || roles.includes("Reception"))
+                  ? "Assistant & FDE"
                   : roles[0]);
 
         return {

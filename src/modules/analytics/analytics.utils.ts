@@ -59,6 +59,7 @@ export const resolveEffectiveScope = (params: {
     if (
         !isPlatformAdmin &&
         roles.includes("Doctor") &&
+        !roles.includes("FDE") &&
         !roles.includes("Reception") &&
         !roles.includes("Assistant") &&
         !params.doctorId

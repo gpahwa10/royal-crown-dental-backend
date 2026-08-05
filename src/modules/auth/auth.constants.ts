@@ -1,6 +1,6 @@
 export const ROLE_DOCTOR = "Doctor";
 export const ROLE_CLINIC_HEAD = "Clinic Head";
-export const ROLE_RECEPTION = "Reception";
+export const ROLE_RECEPTION = "FDE";
 export const ROLE_ASSISTANT = "Assistant";
 export const ROLE_HELPER = "Helper";
 export const ROLE_LAB_TECHNICIAN = "Lab Technician";
@@ -32,6 +32,9 @@ export type EmployeeRole = (typeof EMPLOYEE_ROLES)[number];
 /** Legacy or alternate role labels mapped to canonical names. */
 export const ROLE_NAME_ALIASES: Record<string, EmployeeRole> = {
     "Inventory manager": ROLE_INVENTORY_MANAGER,
+    Reception: ROLE_RECEPTION,
+    Receptionist: ROLE_RECEPTION,
+    receptionist: ROLE_RECEPTION,
 };
 
 export const normalizeRoleName = (name: string): string =>
@@ -52,7 +55,10 @@ export const DESIGNATION_TO_ROLES: Record<string, readonly string[]> = {
     [ROLE_DIRECTOR]: [ROLE_DIRECTOR],
     [ROLE_RETAIL_HEAD]: [ROLE_RETAIL_HEAD],
     "Assistant & Reception": [ROLE_ASSISTANT, ROLE_RECEPTION],
+    "Assistant & FDE": [ROLE_ASSISTANT, ROLE_RECEPTION],
     "Inventory manager": [ROLE_INVENTORY_MANAGER],
+    Reception: [ROLE_RECEPTION],
+    Receptionist: [ROLE_RECEPTION],
 };
 
 export const resolveRolesFromDesignation = (designation: string): string[] => {
