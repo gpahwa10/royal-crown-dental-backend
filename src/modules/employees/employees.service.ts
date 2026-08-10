@@ -20,6 +20,10 @@ import {
 
 const SUPER_ADMIN_ROLE = "Super Admin";
 
+/** Default password assigned to every newly created employee.
+ *  They are immediately prompted to change it on first login (mustChangePassword = true). */
+export const DEFAULT_EMPLOYEE_PASSWORD = "Employee@123";
+
 const isUuid = (value: string) =>
     z.uuid().safeParse(value).success;
 
@@ -132,7 +136,8 @@ export interface RegisterEmployeeInput {
     clinicId: string;
     name: string;
     email: string;
-    password: string;
+    /** If omitted, the default employee password is used and mustChangePassword is set to true. */
+    password?: string;
     phone?: string;
     designation: string;
     timings?: string;
@@ -180,7 +185,8 @@ export const registerEmployee = async (input: RegisterEmployeeInput) => {
         throw new Error("An employee with this email already exists");
     }
 
-    const hashedPassword = await hashPassword(input.password);
+    const plainPassword = input.password ?? DEFAULT_EMPLOYEE_PASSWORD;
+    const hashedPassword = await hashPassword(plainPassword);
 
     const [employee] = await db
         .insert(employees)

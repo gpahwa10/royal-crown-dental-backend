@@ -59,7 +59,8 @@ const registerBaseSchema = z.object({
     clinicId: optionalUuid,
     name: z.string().min(1),
     email: z.email(),
-    password: z.string().min(6),
+    /** Password is optional — defaults to the platform's initial employee password. */
+    password: z.string().min(6).optional(),
     phone: z.string().min(1).optional(),
     designation: z.string().min(1).optional(),
     timings: z.string().min(1).optional(),
