@@ -202,6 +202,41 @@ curl -X GET "${INVOICES}/${INVOICE_ID}" \
 
 
 # =============================================================================
+# STEP 3b — UPDATE PENDING INVOICE
+# =============================================================================
+#
+# PATCH /api/invoices/:id
+#
+# Allowed only while invoice.status is "pending".
+# Recalculates catalog prices, membership discounts, and tax.
+# Invoice number, patient, and clinic stay unchanged. PDF is regenerated.
+#
+# Request:
+# {
+#   "manualDiscount": 50,
+#   "items": [
+#     { "serviceId": "<consultation-service-uuid>", "quantity": 1 },
+#     { "serviceId": "<xray-service-uuid>", "quantity": 2 }
+#   ]
+# }
+#
+# Errors:
+#   400 — Only pending invoices can be edited
+#   404 — Service not found
+
+curl -X PATCH "${INVOICES}/${INVOICE_ID}" \
+  -H "${AUTH_HEADER}" \
+  -H "${JSON_HEADER}" \
+  -d '{
+    "manualDiscount": 50,
+    "items": [
+      { "serviceId": "'"${CONSULTATION_SERVICE_ID}"'", "quantity": 1 },
+      { "serviceId": "'"${XRAY_SERVICE_ID}"'", "quantity": 2 }
+    ]
+  }'
+
+
+# =============================================================================
 # STEP 4 — RECORD PAYMENT ON INVOICE
 # =============================================================================
 #

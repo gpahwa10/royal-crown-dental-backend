@@ -18,13 +18,28 @@ const DEFAULT_VARIANT_NAME = "Default";
 const DEFAULT_UNIT = "pcs";
 const EQUIPMENT_CATEGORY = "Equipment";
 const CLINIC_STOCK_RATIO = 0.3;
-const SEED_TRANSACTION_NOTE = "seed-inventory dummy data";
+const SEED_TRANSACTION_NOTE = "seed-inventory csv data";
+
+const CSV_PATH = join(
+    process.cwd(),
+    "docs/data-migration-templates/YourVCare Master Data - Inventory Items.csv"
+);
+
+const DEFAULT_WAREHOUSE = {
+    name: "Central Warehouse",
+    city: "Mumbai",
+    address: "Central Distribution Hub, Mumbai, Maharashtra",
+};
 
 type SeedInventoryItem = {
     name: string;
     variants: string[];
     in_stock: number;
     required: number;
+    sku?: string;
+    unit?: string;
+    description?: string;
+    isActive?: boolean;
 };
 
 type SeedInventoryCategory = {
@@ -39,6 +54,121 @@ type SeedInventoryFile = {
         address: string;
     };
     inventory: SeedInventoryCategory[];
+};
+
+/** Minimal RFC4180 CSV parser that supports quoted fields. */
+const parseCsv = (content: string): string[][] => {
+    const rows: string[][] = [];
+    let row: string[] = [];
+    let field = "";
+    let inQuotes = false;
+
+    const pushField = () => {
+        row.push(field);
+        field = "";
+    };
+
+    const pushRow = () => {
+        if (row.some((value) => value.trim() !== "")) {
+            rows.push(row);
+        }
+        row = [];
+    };
+
+    for (let i = 0; i < content.length; i += 1) {
+        const char = content[i];
+        const next = content[i + 1];
+
+        if (char === '"') {
+            if (inQuotes && next === '"') {
+                field += '"';
+                i += 1;
+            } else {
+                inQuotes = !inQuotes;
+            }
+            continue;
+        }
+
+        if (!inQuotes && char === ",") {
+            pushField();
+            continue;
+        }
+
+        if (!inQuotes && (char === "\n" || char === "\r")) {
+            if (char === "\r" && next === "\n") {
+                i += 1;
+            }
+            pushField();
+            pushRow();
+            continue;
+        }
+
+        field += char;
+    }
+
+    if (field.length > 0 || row.length > 0) {
+        pushField();
+        pushRow();
+    }
+
+    return rows;
+};
+
+const parseNumber = (raw: string, fallback = 0) => {
+    const value = Number.parseInt(raw.trim(), 10);
+    return Number.isNaN(value) ? fallback : value;
+};
+
+export const loadInventoryFromCsv = (
+    filePath: string = CSV_PATH
+): SeedInventoryFile => {
+    const content = readFileSync(filePath, "utf8");
+    const rows = parseCsv(content);
+    const [header, ...dataRows] = rows;
+
+    if (!header?.[0]?.toLowerCase().includes("item_name")) {
+        throw new Error(`Unexpected CSV header in ${filePath}`);
+    }
+
+    const categoryMap = new Map<string, SeedInventoryItem[]>();
+
+    for (const cols of dataRows) {
+        const name = (cols[0] ?? "").trim();
+        const categoryName = (cols[1] ?? "").trim();
+        if (!name || !categoryName) {
+            continue;
+        }
+
+        const variantsRaw = (cols[6] ?? "").trim();
+        const variants = variantsRaw
+            ? variantsRaw.split("|").map((v) => v.trim()).filter(Boolean)
+            : [];
+
+        const item: SeedInventoryItem = {
+            name,
+            variants,
+            in_stock: parseNumber(cols[8] ?? "0"),
+            required: parseNumber(cols[5] ?? "0"),
+            sku: (cols[3] ?? "").trim() || undefined,
+            unit: (cols[4] ?? "").trim() || undefined,
+            description: (cols[7] ?? "").trim() || undefined,
+            isActive: (cols[9] ?? "true").trim().toLowerCase() !== "false",
+        };
+
+        const existing = categoryMap.get(categoryName) ?? [];
+        existing.push(item);
+        categoryMap.set(categoryName, existing);
+    }
+
+    return {
+        warehouse: DEFAULT_WAREHOUSE,
+        inventory: Array.from(categoryMap.entries()).map(
+            ([category, items]) => ({
+                category,
+                items,
+            })
+        ),
+    };
 };
 
 export const loadInventoryFromJson = (): SeedInventoryFile => {
@@ -108,10 +238,12 @@ const upsertGlobalItem = async (
     const values = {
         categoryId,
         name: item.name,
-        unit: resolveUnit(categoryName),
+        sku: item.sku,
+        unit: item.unit ?? resolveUnit(categoryName),
         minimumStockLevel: item.required,
-        description: `${item.name} — seeded dummy inventory`,
-        isActive: true,
+        description:
+            item.description ?? `${item.name} — seeded inventory item`,
+        isActive: item.isActive ?? true,
     };
 
     if (existing) {
@@ -401,7 +533,7 @@ export const getSeededCurrentStockSummary = async (warehouseId: string) => {
 };
 
 export const seedInventory = async (
-    data: SeedInventoryFile = loadInventoryFromJson()
+    data: SeedInventoryFile = loadInventoryFromCsv()
 ) => {
     const activeClinics = await db
         .select()

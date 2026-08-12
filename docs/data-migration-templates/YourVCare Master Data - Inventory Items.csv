@@ -1,0 +1,97 @@
+item_name,category_name,clinic,sku,unit,minimum_stock_level,variants,description,in_stock,is_active
+Sterilisation Reel,Sterilization & Consumables,,CON-001,reel,10,,Sterilisation Reel — sterilization & consumables inventory item,15,true
+Disinfectant Liquid (glutapex),Sterilization & Consumables,,CON-002,bottle,5,,Disinfectant Liquid (glutapex) — sterilization & consumables inventory item,8,true
+Gloves,Sterilization & Consumables,,CON-003,box,120,Nitrile|Latex,Gloves — sterilization & consumables inventory item,180,true
+Unolock Syringe,Sterilization & Consumables,,CON-004,box,25,,Unolock Syringe — sterilization & consumables inventory item,38,true
+Local Anesthesia,Sterilization & Consumables,,CON-005,carton,5,,Local Anesthesia — sterilization & consumables inventory item,8,true
+Topical Spray,Sterilization & Consumables,,CON-006,bottle,15,,Topical Spray — sterilization & consumables inventory item,23,true
+Green Cloth,Cotton & Basic Materials,,CTN-001,unit,10,Big|Small,Green Cloth — cotton & basic materials inventory item,15,true
+Cotton Holder,Cotton & Basic Materials,,CTN-002,unit,5,,Cotton Holder — cotton & basic materials inventory item,8,true
+Cotton Roll Holder,Cotton & Basic Materials,,CTN-003,unit,5,,Cotton Roll Holder — cotton & basic materials inventory item,8,true
+Cotton,Cotton & Basic Materials,,CTN-004,roll,12,,Cotton — cotton & basic materials inventory item,18,true
+Gauze and Gauze Balls,Cotton & Basic Materials,,CTN-005,pack,25,,Gauze and Gauze Balls — cotton & basic materials inventory item,38,true
+Endoblock (scale),Dental Materials,,MAT-001,unit,5,,Endoblock (scale) — dental materials inventory item,8,true
+Oil Spray,Dental Materials,,MAT-002,unit,10,,Oil Spray — dental materials inventory item,15,true
+Composite Filling Instrument,Dental Materials,,MAT-003,unit,5,,Composite Filling Instrument — dental materials inventory item,8,true
+Agate Spatula,Dental Materials,,MAT-004,unit,5,,Agate Spatula — dental materials inventory item,8,true
+Cement Spatula,Dental Materials,,MAT-005,unit,5,,Cement Spatula — dental materials inventory item,8,true
+Alginate,Dental Materials,,MAT-006,unit,30,,Alginate — dental materials inventory item,45,true
+Modelling Wax,Dental Materials,,MAT-007,unit,23,,Modelling Wax — dental materials inventory item,35,true
+Zinc Oxide Powder and Eugenol Liquid,Dental Materials,,MAT-008,unit,10,,Zinc Oxide Powder and Eugenol Liquid — dental materials inventory item,15,true
+Biosealer,Dental Materials,,MAT-009,unit,13,,Biosealer — dental materials inventory item,20,true
+Bleaching Kit,Dental Materials,,MAT-010,pack,5,,Bleaching Kit — dental materials inventory item,8,true
+GIC,Filling Materials,,FIL-001,pack,12,Luting|Restorative,GIC — filling materials inventory item,18,true
+Composite,Filling Materials,,FIL-002,pack,12,Flowable|Restorative,Composite — filling materials inventory item,18,true
+Dual Cure Resin,Filling Materials,,FIL-003,unit,10,,Dual Cure Resin — filling materials inventory item,15,true
+Bonding Agent,Filling Materials,,FIL-004,unit,15,,Bonding Agent — filling materials inventory item,23,true
+Etchant,Filling Materials,,FIL-005,unit,25,,Etchant — filling materials inventory item,38,true
+Applicator Tip,Accessories,,ACC-001,unit,15,Fine|Regular,Applicator Tip — accessories inventory item,23,true
+Articulating Paper,Accessories,,ACC-002,unit,30,,Articulating Paper — accessories inventory item,45,true
+Matrix Band,Accessories,,ACC-003,unit,10,,Matrix Band — accessories inventory item,15,true
+Mylar Strip,Accessories,,ACC-004,unit,10,,Mylar Strip — accessories inventory item,15,true
+Wedges,Accessories,,ACC-005,unit,10,,Wedges — accessories inventory item,15,true
+Teflon Tape,Accessories,,ACC-006,unit,10,,Teflon Tape — accessories inventory item,15,true
+Protaper,Endodontics,,END-001,box,10,21mm|25mm|Sx|S1|S2|F1|F2|F3,Protaper — endodontics inventory item,15,true
+K File,Endodontics,,END-002,box,200,21mm|25mm|Assorted 31mm,K File — endodontics inventory item,300,true
+H File,Endodontics,,END-003,box,40,21mm 15-40|21mm 45-80|25mm 15-40|25mm 45-80,H File — endodontics inventory item,60,true
+Retreatment Files,Endodontics,,END-004,set,8,,Retreatment Files — endodontics inventory item,12,true
+Rotary Files,Endodontics,,END-005,pack,15,Coronal Flare 17-4%|20-4%|25-4%|Glide Path File,Rotary Files — endodontics inventory item,23,true
+Spreader,Endodontics,,END-006,box,10,20|25,Spreader — endodontics inventory item,15,true
+Gutta Percha,Endodontics,,END-007,box,16,20-2% F1|25-2% F2|20-4% F3|25-4% F3,Gutta Percha — endodontics inventory item,24,true
+Paper Point,Endodontics,,END-008,box,24,F1|20-4% F2|25-4% F3,Paper Point — endodontics inventory item,36,true
+RC Help,Chemicals,,CHM-001,unit,27,,RC Help — chemicals inventory item,41,true
+RC Cal,Chemicals,,CHM-002,unit,15,,RC Cal — chemicals inventory item,23,true
+RC Pex (Metapex),Chemicals,,CHM-003,unit,15,,RC Pex (Metapex) — chemicals inventory item,23,true
+EDTA Liquid,Chemicals,,CHM-004,unit,10,,EDTA Liquid — chemicals inventory item,15,true
+Formocresol,Chemicals,,CHM-005,unit,12,,Formocresol — chemicals inventory item,18,true
+RC Solve,Chemicals,,CHM-006,unit,10,,RC Solve — chemicals inventory item,15,true
+Post,Surgical,,SUR-001,unit,10,,Post — surgical inventory item,15,true
+Peeso Reamers,Surgical,,SUR-002,box,10,32mm 1|32mm 2|Assorted 1-6,Peeso Reamers — surgical inventory item,15,true
+MTA Putty,Surgical,,SUR-003,unit,10,,MTA Putty — surgical inventory item,15,true
+Bio Dentin,Surgical,,SUR-004,unit,10,,Bio Dentin — surgical inventory item,15,true
+Temporary Filling Material,Surgical,,SUR-005,unit,16,,Temporary Filling Material — surgical inventory item,24,true
+Saline,Chemicals,,CHM-007,carton,2,,Saline — chemicals inventory item,3,true
+Hypo,Chemicals,,CHM-008,gallon,3,,Hypo — chemicals inventory item,5,true
+Moons Probe,Surgical,,SUR-006,unit,5,,Moons Probe — surgical inventory item,8,true
+Suture Needle,Surgical,,SUR-007,pack,5,,Suture Needle — surgical inventory item,8,true
+Needle Holder,Surgical,,SUR-008,unit,5,,Needle Holder — surgical inventory item,8,true
+Sugical Bur,Surgical,,SUR-009,box,10,Straight|Round,Sugical Bur — surgical inventory item,15,true
+Betadine,Surgical,,SUR-010,bottle,10,,Betadine — surgical inventory item,15,true
+Haemostat Liquid,Surgical,,SUR-011,unit,12,,Haemostat Liquid — surgical inventory item,18,true
+Abgel,Surgical,,SUR-012,pack,12,,Abgel — surgical inventory item,18,true
+Graft And Membrane,Surgical,,SUR-013,pack,5,,Graft And Membrane — surgical inventory item,8,true
+Mouth Wash,Sterilization & Consumables,,CON-007,carton,5,,Mouth Wash — sterilization & consumables inventory item,8,true
+Chlorhex,Chemicals,,CHM-009,unit,10,,Chlorhex — chemicals inventory item,15,true
+Suction Tip,Sterilization & Consumables,,CON-008,sack,1,,Suction Tip — sterilization & consumables inventory item,2,true
+"Wax Knife, Carver",Dental Materials,,MAT-011,unit,5,,"Wax Knife, Carver — dental materials inventory item",8,true
+Glass Slab,Dental Materials,,MAT-012,unit,5,,Glass Slab — dental materials inventory item,8,true
+Mixing Pad,Dental Materials,,MAT-013,pack,5,,Mixing Pad — dental materials inventory item,8,true
+Blow Torch And Gas Refill,Dental Materials,,MAT-014,unit,5,,Blow Torch And Gas Refill — dental materials inventory item,8,true
+Hydrogen Peroxide,Chemicals,,CHM-010,bottle,5,,Hydrogen Peroxide — chemicals inventory item,8,true
+Prophylaxis Paste And Brush,Dental Materials,,MAT-015,unit,5,,Prophylaxis Paste And Brush — dental materials inventory item,8,true
+DPI Paste,Dental Materials,,MAT-016,box,5,,DPI Paste — dental materials inventory item,8,true
+Green Stick,Dental Materials,,MAT-017,box,5,,Green Stick — dental materials inventory item,8,true
+Putty,Dental Materials,,MAT-018,set,10,Activator|Accelerator,Putty — dental materials inventory item,15,true
+Shade Guide,Dental Materials,,MAT-019,unit,5,,Shade Guide — dental materials inventory item,8,true
+Mouth Prop,Dental Materials,,MAT-020,unit,5,,Mouth Prop — dental materials inventory item,8,true
+Sealing Machine,Equipment,,EQP-001,unit,5,,Sealing Machine — equipment inventory item,8,true
+UV Chamber,Equipment,,EQP-002,unit,5,,UV Chamber — equipment inventory item,8,true
+Autoclave,Equipment,,EQP-003,unit,5,,Autoclave — equipment inventory item,8,true
+Boiler,Equipment,,EQP-004,unit,5,,Boiler — equipment inventory item,8,true
+Alpine Stone Bur,Equipment,,EQP-005,unit,5,,Alpine Stone Bur — equipment inventory item,8,true
+Sandpaper,Equipment,,EQP-006,unit,5,,Sandpaper — equipment inventory item,8,true
+Apex Locator,Equipment,,EQP-007,unit,5,,Apex Locator — equipment inventory item,8,true
+Curing Machine,Equipment,,EQP-008,unit,5,,Curing Machine — equipment inventory item,8,true
+Scaler,Equipment,,EQP-009,unit,5,,Scaler — equipment inventory item,8,true
+Endomotor,Equipment,,EQP-010,unit,5,,Endomotor — equipment inventory item,8,true
+Airotor,Equipment,,EQP-011,unit,5,,Airotor — equipment inventory item,8,true
+Contra Angle,Equipment,,EQP-012,unit,5,,Contra Angle — equipment inventory item,8,true
+Straight Handpiece,Equipment,,EQP-013,unit,5,,Straight Handpiece — equipment inventory item,8,true
+Ultrasonic Activator,Equipment,,EQP-014,unit,5,,Ultrasonic Activator — equipment inventory item,8,true
+Intrument Tray,Equipment,,EQP-015,unit,5,,Intrument Tray — equipment inventory item,8,true
+Endobox,Equipment,,EQP-016,unit,5,,Endobox — equipment inventory item,8,true
+Bur Box,Equipment,,EQP-017,unit,5,,Bur Box — equipment inventory item,8,true
+Burs,Endodontics,,END-009,pack,5,,Burs — endodontics inventory item,8,true
+Mask,PPE,,PPE-001,pack,20,,Mask — ppe inventory item,30,true
+Headcap,PPE,,PPE-002,pack,20,,Headcap — ppe inventory item,30,true
+PMT,General,,GEN-001,pcs,5,,PMT — general inventory item,8,true

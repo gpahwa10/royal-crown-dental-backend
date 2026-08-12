@@ -27,7 +27,7 @@ const main = async () => {
         `Seed transactions: ${result.currentStock.seedTransactions} (purchase + transfer)`
     );
     console.log(
-        "\nNote: Warehouse holds full sample quantities; each clinic holds ~30% for realistic clinic-wise stock."
+        "\nNote: Loaded from docs/data-migration-templates/YourVCare Master Data - Inventory Items.csv. Warehouse holds full quantities; each clinic holds ~30%."
     );
 };
 

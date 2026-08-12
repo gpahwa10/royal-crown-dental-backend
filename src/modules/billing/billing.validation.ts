@@ -28,6 +28,11 @@ export const createInvoiceSchema = z.object({
     items: z.array(invoiceLineItemSchema).min(1),
 });
 
+export const updateInvoiceSchema = z.object({
+    items: z.array(invoiceLineItemSchema).min(1),
+    manualDiscount: z.coerce.number().int().min(0).default(0),
+});
+
 export const invoiceListQuerySchema = z.object({
     page: z.coerce.number().int().min(1).default(1),
     limit: z.coerce.number().int().min(1).max(100).default(20),

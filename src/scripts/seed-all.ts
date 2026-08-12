@@ -8,6 +8,7 @@ const run = (script: string) => {
 
 const main = () => {
     run("seed:clinics");
+    run("seed:services");
     run("seed:inventory");
     run("seed:employees");
     run("seed:dev");

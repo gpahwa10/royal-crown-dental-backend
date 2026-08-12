@@ -45,6 +45,11 @@ export interface CreateInvoiceInput {
     skipMembershipDiscount?: boolean;
 }
 
+export interface UpdateInvoiceInput {
+    items: InvoiceLineInput[];
+    manualDiscount?: number;
+}
+
 export interface RecordInvoicePaymentInput {
     amount: number;
     paymentMethod: PaymentRow["paymentMethod"];
@@ -224,6 +229,48 @@ export const buildInvoiceDetails = async (
     };
 };
 
+const calculateInvoiceFromCatalog = async (input: {
+    clinicId: string;
+    patientId: string;
+    items: InvoiceLineInput[];
+    manualDiscount?: number;
+    skipMembershipDiscount?: boolean;
+}) => {
+    const uniqueServiceIds = [...new Set(input.items.map((item) => item.serviceId))];
+    const services = await db
+        .select()
+        .from(serviceCatalog)
+        .where(
+            and(
+                inArray(serviceCatalog.id, uniqueServiceIds),
+                eq(serviceCatalog.clinicId, input.clinicId),
+                eq(serviceCatalog.isActive, true)
+            )
+        );
+
+    if (services.length !== uniqueServiceIds.length) {
+        throw new Error("Service not found");
+    }
+
+    const benefitsByServiceCode = input.skipMembershipDiscount
+        ? new Map()
+        : await getActiveMembershipBenefitsForPatient(input.patientId);
+
+    return calculateInvoiceLines(
+        input.items,
+        services.map((service) => ({
+            serviceId: service.id,
+            serviceCode: service.serviceCode,
+            serviceName: service.serviceName,
+            unitPrice: service.defaultPrice,
+            taxPercentage: service.taxPercentage,
+            isTaxable: service.isTaxable,
+        })),
+        benefitsByServiceCode,
+        input.manualDiscount ?? 0
+    );
+};
+
 export const createInvoice = async (input: CreateInvoiceInput) => {
     const patient = await assertPatientExists(input.patientId);
     if (patient.clinicId !== input.clinicId) {
@@ -240,39 +287,13 @@ export const createInvoice = async (input: CreateInvoiceInput) => {
         );
     }
 
-    const serviceIds = input.items.map((item) => item.serviceId);
-    const services = await db
-        .select()
-        .from(serviceCatalog)
-        .where(
-            and(
-                inArray(serviceCatalog.id, serviceIds),
-                eq(serviceCatalog.clinicId, input.clinicId),
-                eq(serviceCatalog.isActive, true)
-            )
-        );
-
-    if (services.length !== serviceIds.length) {
-        throw new Error("Service not found");
-    }
-
-    const benefitsByServiceCode = input.skipMembershipDiscount
-        ? new Map()
-        : await getActiveMembershipBenefitsForPatient(input.patientId);
-
-    const calculation = calculateInvoiceLines(
-        input.items,
-        services.map((service) => ({
-            serviceId: service.id,
-            serviceCode: service.serviceCode,
-            serviceName: service.serviceName,
-            unitPrice: service.defaultPrice,
-            taxPercentage: service.taxPercentage,
-            isTaxable: service.isTaxable,
-        })),
-        benefitsByServiceCode,
-        input.manualDiscount ?? 0
-    );
+    const calculation = await calculateInvoiceFromCatalog({
+        clinicId: input.clinicId,
+        patientId: input.patientId,
+        items: input.items,
+        manualDiscount: input.manualDiscount,
+        skipMembershipDiscount: input.skipMembershipDiscount,
+    });
 
     const now = new Date();
 
@@ -340,6 +361,72 @@ export const createInvoice = async (input: CreateInvoiceInput) => {
     }
 
     return buildInvoiceDetails(updatedInvoice);
+};
+
+export const updateInvoice = async (id: string, input: UpdateInvoiceInput) => {
+    const invoice = await getInvoiceRecord(id);
+
+    if (invoice.status !== "pending") {
+        throw new Error("Only pending invoices can be edited");
+    }
+
+    const patient = await assertPatientExists(invoice.patientId);
+    const clinic = await assertClinicExists(invoice.clinicId);
+
+    const calculation = await calculateInvoiceFromCatalog({
+        clinicId: invoice.clinicId,
+        patientId: invoice.patientId,
+        items: input.items,
+        manualDiscount: input.manualDiscount,
+    });
+
+    const now = new Date();
+
+    const updated = await db.transaction(async (tx) => {
+        await tx.delete(invoiceItems).where(eq(invoiceItems.invoiceId, id));
+
+        await tx.insert(invoiceItems).values(
+            calculation.lines.map((line) => ({
+                invoiceId: id,
+                serviceId: line.serviceId,
+                serviceName: line.serviceName,
+                quantity: line.quantity,
+                unitPrice: line.unitPrice,
+                discountAmount: line.discountAmount,
+                taxPercentage: line.taxPercentage,
+                taxAmount: line.taxAmount,
+                lineTotal: line.lineTotal,
+            }))
+        );
+
+        const [saved] = await tx
+            .update(invoices)
+            .set({
+                subtotal: calculation.subtotal,
+                membershipDiscount: calculation.membershipDiscount,
+                manualDiscount: calculation.manualDiscount,
+                taxAmount: calculation.taxAmount,
+                grandTotal: calculation.grandTotal,
+                amountPaid: 0,
+                balanceAmount: calculation.grandTotal,
+                status: "pending",
+                updatedAt: now,
+            })
+            .where(eq(invoices.id, id))
+            .returning();
+
+        return saved;
+    });
+
+    const items = await getInvoiceItems(updated.id);
+    const withPdf = await attachInvoicePdf(
+        updated,
+        patient.name,
+        clinic.clinicName,
+        items
+    );
+
+    return buildInvoiceDetails(withPdf);
 };
 
 export const listInvoices = async (options: {

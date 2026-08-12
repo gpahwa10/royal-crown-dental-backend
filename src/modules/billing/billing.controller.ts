@@ -12,6 +12,7 @@ import {
     listInvoices,
     listInvoicesByPatientId,
     recordInvoicePayment,
+    updateInvoice,
 } from "./billing.service";
 import {
     assertFinancialWriteAccess,
@@ -25,6 +26,7 @@ import {
     invoiceIdParamSchema,
     invoiceListQuerySchema,
     patientIdParamSchema,
+    updateInvoiceSchema,
 } from "./billing.validation";
 
 const resolveClinicId = (
@@ -99,6 +101,26 @@ export const getInvoiceHandler = async (req: AuthRequest, res: Response) => {
             req.employee?.clinicId
         );
 
+        return res.status(200).json({ success: true, data: invoice });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
+export const updateInvoiceHandler = async (req: AuthRequest, res: Response) => {
+    try {
+        assertFinancialWriteAccess(req);
+        const { id } = invoiceIdParamSchema.parse(req.params);
+        const body = updateInvoiceSchema.parse(req.body);
+
+        const existing = await getInvoiceById(id);
+        assertInvoiceClinicAccess(
+            existing.invoice.clinicId,
+            hasPlatformAdminAccess(req.employee),
+            req.employee?.clinicId
+        );
+
+        const invoice = await updateInvoice(id, body);
         return res.status(200).json({ success: true, data: invoice });
     } catch (error) {
         return handleError(res, error);
