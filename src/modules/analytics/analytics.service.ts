@@ -51,10 +51,13 @@ import {
 } from "./analytics.validation";
 import {
     computeGrowthMetric,
+    endOfZonedDay,
     inferGroupByUnit,
     resolveDateRange,
     resolveEffectiveScope,
+    startOfZonedDay,
 } from "./analytics.utils";
+import { CLINIC_TIMEZONE } from "../scheduling/scheduling.constants";
 
 type Scope = {
     clinicId?: string;
@@ -106,27 +109,13 @@ const dateBetween = (
     endDate: Date
 ): SQL => and(gte(column, startDate), lte(column, endDate))!;
 
-const startOfToday = () => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-};
+const startOfToday = () => startOfZonedDay(CLINIC_TIMEZONE);
 
-const endOfToday = () => {
-    const start = startOfToday();
-    return new Date(
-        start.getFullYear(),
-        start.getMonth(),
-        start.getDate(),
-        23,
-        59,
-        59,
-        999
-    );
-};
+const endOfToday = () => endOfZonedDay(CLINIC_TIMEZONE);
 
 const startOfDayInDays = (daysFromToday: number) => {
     const d = startOfToday();
-    d.setDate(d.getDate() + daysFromToday);
+    d.setTime(d.getTime() + daysFromToday * 24 * 60 * 60 * 1000);
     return d;
 };
 

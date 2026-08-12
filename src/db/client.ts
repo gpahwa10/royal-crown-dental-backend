@@ -7,11 +7,20 @@ if (!process.env.DATABASE_URL) {
     );
 }
 
+const connectionString = process.env.DATABASE_URL;
+const isLocalhost =
+    /@localhost(?::|\/|$)/i.test(connectionString) ||
+    /@127\.0\.0\.1(?::|\/|$)/i.test(connectionString);
+
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: {
-        rejectUnauthorized: false,
-    },
+    connectionString,
+    ...(isLocalhost
+        ? {}
+        : {
+              ssl: {
+                  rejectUnauthorized: false,
+              },
+          }),
 });
 
 export const db = drizzle(pool);

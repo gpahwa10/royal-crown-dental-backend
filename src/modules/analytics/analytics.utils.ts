@@ -8,6 +8,7 @@ import {
 } from "./analytics.types";
 import { hasPlatformAdminAccess } from "../auth/auth.constants";
 import { AuthRequest } from "../../middleware/auth.middleware";
+import { CLINIC_TIMEZONE } from "../scheduling/scheduling.constants";
 
 export const handleAnalyticsError = (res: Response, error: unknown) => {
     if (error instanceof ZodError) {
@@ -49,9 +50,12 @@ export const resolveEffectiveScope = (params: {
     const { req } = params;
     const isPlatformAdmin = hasPlatformAdminAccess(req.employee);
 
+    // Platform admins (Super Admin / Director / Retail Head):
+    // - with clinicId query → that clinic only
+    // - without clinicId → all clinics (do NOT fall back to employee.clinicId)
     const resolvedClinicId = isPlatformAdmin
-        ? params.clinicId ?? req.employee?.clinicId ?? undefined
-        : req.employee?.clinicId;
+        ? params.clinicId
+        : (req.employee?.clinicId ?? undefined);
 
     let resolvedDoctorId = params.doctorId;
 
@@ -68,11 +72,62 @@ export const resolveEffectiveScope = (params: {
     }
 
     return {
-        clinicId: resolvedClinicId ?? undefined,
-        doctorId: resolvedDoctorId ?? undefined,
+        clinicId: resolvedClinicId || undefined,
+        doctorId: resolvedDoctorId || undefined,
         isPlatformAdmin,
     };
 };
+
+const zonedYmd = (timeZone: string, reference = new Date()) => {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+    }).formatToParts(reference);
+
+    return {
+        year: Number(parts.find((p) => p.type === "year")?.value),
+        month: Number(parts.find((p) => p.type === "month")?.value),
+        day: Number(parts.find((p) => p.type === "day")?.value),
+    };
+};
+
+export const startOfZonedDay = (timeZone: string, reference = new Date()) => {
+    const { year, month, day } = zonedYmd(timeZone, reference);
+    const utcNoon = new Date(Date.UTC(year, month - 1, day, 12, 0, 0, 0));
+
+    const parts = Object.fromEntries(
+        new Intl.DateTimeFormat("en-US", {
+            timeZone,
+            hourCycle: "h23",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+        })
+            .formatToParts(utcNoon)
+            .filter((p) => p.type !== "literal")
+            .map((p) => [p.type, p.value])
+    );
+
+    const msFromMidnight =
+        ((Number(parts.hour) * 60 + Number(parts.minute)) * 60 +
+            Number(parts.second)) *
+        1000;
+
+    return new Date(utcNoon.getTime() - msFromMidnight);
+};
+
+export const endOfZonedDay = (timeZone: string, reference = new Date()) => {
+    const start = startOfZonedDay(timeZone, reference);
+    return new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
+};
+
+const addCalendarDays = (date: Date, days: number) =>
+    new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
 
 export const resolveDateRange = (options: {
     startDate?: string;
@@ -81,6 +136,7 @@ export const resolveDateRange = (options: {
     comparisonPeriod: ComparisonPeriod;
 }): DateRangeInfo => {
     const now = new Date();
+    const tz = CLINIC_TIMEZONE;
 
     let start: Date;
     let end: Date;
@@ -89,85 +145,71 @@ export const resolveDateRange = (options: {
         start = new Date(options.startDate);
         end = new Date(options.endDate);
     } else {
-        const preset = options.datePreset;
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const todayStart = startOfZonedDay(tz, now);
+        const todayEnd = endOfZonedDay(tz, now);
+        const { year, month, day } = zonedYmd(tz, now);
 
-        const startOfWeek = (date: Date) => {
-            const d = new Date(date);
-            const day = d.getDay();
-            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-            return new Date(d.setDate(diff));
+        // Monday-start week in clinic timezone
+        const weekdayName = new Intl.DateTimeFormat("en-US", {
+            timeZone: tz,
+            weekday: "short",
+        }).format(now);
+        const weekdayIndex =
+            { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 }[
+                weekdayName
+            ] ?? 0;
+
+        const startOfWeek = () => addCalendarDays(todayStart, -weekdayIndex);
+        const endOfWeek = () =>
+            endOfZonedDay(tz, addCalendarDays(startOfWeek(), 6));
+
+        const startOfMonth = (y: number, m: number) =>
+            startOfZonedDay(tz, new Date(Date.UTC(y, m - 1, 1, 12)));
+        const endOfMonth = (y: number, m: number) => {
+            // day 0 of next month = last day of m
+            const lastDay = new Date(Date.UTC(y, m, 0, 12));
+            return endOfZonedDay(tz, lastDay);
         };
 
-        const endOfWeek = (date: Date) => {
-            const s = startOfWeek(date);
-            return new Date(s.getFullYear(), s.getMonth(), s.getDate() + 6, 23, 59, 59, 999);
-        };
-
-        const startOfMonth = (date: Date) =>
-            new Date(date.getFullYear(), date.getMonth(), 1);
-        const endOfMonth = (date: Date) =>
-            new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
-
-        const startOfYear = (date: Date) =>
-            new Date(date.getFullYear(), 0, 1);
-        const endOfYear = (date: Date) =>
-            new Date(date.getFullYear(), 11, 31, 23, 59, 59, 999);
-
-        switch (preset) {
+        switch (options.datePreset) {
             case "today":
-                start = today;
-                end = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+                start = todayStart;
+                end = todayEnd;
                 break;
             case "yesterday": {
-                const y = new Date(today);
-                y.setDate(y.getDate() - 1);
-                start = y;
-                end = new Date(y.getFullYear(), y.getMonth(), y.getDate(), 23, 59, 59, 999);
+                const y = addCalendarDays(todayStart, -1);
+                start = startOfZonedDay(tz, y);
+                end = endOfZonedDay(tz, y);
                 break;
             }
             case "this_week":
-                start = startOfWeek(today);
-                end = endOfWeek(today);
+                start = startOfWeek();
+                end = endOfWeek();
                 break;
             case "last_week": {
-                const lastWeekStart = startOfWeek(today);
-                lastWeekStart.setDate(lastWeekStart.getDate() - 7);
-                const lastWeekEnd = new Date(lastWeekStart);
-                lastWeekEnd.setDate(lastWeekStart.getDate() + 6);
-                end = new Date(
-                    lastWeekEnd.getFullYear(),
-                    lastWeekEnd.getMonth(),
-                    lastWeekEnd.getDate(),
-                    23,
-                    59,
-                    59,
-                    999
-                );
-                start = lastWeekStart;
+                const thisWeekStart = startOfWeek();
+                start = addCalendarDays(thisWeekStart, -7);
+                end = endOfZonedDay(tz, addCalendarDays(start, 6));
                 break;
             }
             case "this_month":
-                start = startOfMonth(today);
-                end = endOfMonth(today);
+                start = startOfMonth(year, month);
+                end = endOfMonth(year, month);
                 break;
             case "last_month": {
-                const lastMonthDate = new Date(
-                    today.getFullYear(),
-                    today.getMonth() - 1,
-                    1
-                );
-                start = startOfMonth(lastMonthDate);
-                end = endOfMonth(lastMonthDate);
+                const prevMonth = month === 1 ? 12 : month - 1;
+                const prevYear = month === 1 ? year - 1 : year;
+                start = startOfMonth(prevYear, prevMonth);
+                end = endOfMonth(prevYear, prevMonth);
                 break;
             }
             case "this_year":
-                start = startOfYear(today);
-                end = endOfYear(today);
+                start = startOfMonth(year, 1);
+                end = endOfMonth(year, 12);
                 break;
             default:
-                start = startOfMonth(today);
-                end = endOfMonth(today);
+                start = startOfMonth(year, month);
+                end = endOfMonth(year, month);
         }
     }
 
@@ -186,7 +228,11 @@ export const resolveDateRange = (options: {
             comparisonStartDate = new Date(
                 start.getFullYear() - 1,
                 start.getMonth(),
-                start.getDate()
+                start.getDate(),
+                start.getHours(),
+                start.getMinutes(),
+                start.getSeconds(),
+                start.getMilliseconds()
             );
             comparisonEndDate = new Date(
                 end.getFullYear() - 1,
