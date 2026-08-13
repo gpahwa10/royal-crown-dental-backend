@@ -16,3 +16,8 @@ export const changePasswordSchema = z.object({
     currentPassword: z.string().min(1).optional(),
     newPassword: z.string().min(8),
 });
+
+export const forgotPasswordSchema = z.object({
+    email: z.email(),
+    note: z.string().trim().max(500).optional(),
+});

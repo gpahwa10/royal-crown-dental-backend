@@ -16,6 +16,9 @@ import {
     blockEmployeeHandler,
     getEmployeeWorkingHoursHandler,
     putEmployeeWorkingHoursHandler,
+    listPasswordResetRequestsHandler,
+    approvePasswordResetHandler,
+    rejectPasswordResetHandler,
 } from "./employees.controller";
 
 const router = Router();
@@ -42,6 +45,27 @@ router.get(
     authenticate,
     requireEmployeeListAccess,
     listEmployeesHandler
+);
+
+router.get(
+    "/password-reset-requests",
+    authenticate,
+    requireEmployeeManagementAccess,
+    listPasswordResetRequestsHandler
+);
+
+router.post(
+    "/password-reset-requests/:id/approve",
+    authenticate,
+    requireEmployeeManagementAccess,
+    approvePasswordResetHandler
+);
+
+router.post(
+    "/password-reset-requests/:id/reject",
+    authenticate,
+    requireEmployeeManagementAccess,
+    rejectPasswordResetHandler
 );
 
 router.get(

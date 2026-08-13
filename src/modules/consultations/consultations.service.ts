@@ -193,10 +193,6 @@ export const updateConsultation = async (
 ) => {
     const consultation = await getConsultationRecord(id);
 
-    if (consultation.status === "completed") {
-        throw new Error("Consultation already completed");
-    }
-
     if (consultation.status === "cancelled") {
         throw new Error("Cannot update a cancelled consultation");
     }
@@ -249,6 +245,14 @@ export const updateConsultation = async (
 
 export const startConsultation = async (id: string) => {
     const consultation = await getConsultationRecord(id);
+
+    if (consultation.status === "cancelled") {
+        throw new Error("Cannot start a cancelled consultation");
+    }
+
+    if (consultation.status === "in_progress" || consultation.status === "completed") {
+        return consultation;
+    }
 
     if (consultation.status !== "draft") {
         throw new Error("Only draft consultations can be started");

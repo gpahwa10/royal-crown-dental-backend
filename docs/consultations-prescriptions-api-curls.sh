@@ -287,7 +287,7 @@ curl -X GET "${CONSULTATIONS}/${CONSULTATION_ID}" \
 # Not allowed: patientId, doctorId, clinicId, consultationCode
 #
 # Error (400):
-# { "success": false, "message": "Consultation already completed" }
+# { "success": false, "message": "Cannot update a cancelled consultation" }
 
 curl -X PUT "${CONSULTATIONS}/${CONSULTATION_ID}" \
   -H "${JSON_HEADER}" \
@@ -362,7 +362,7 @@ curl -X POST "${CONSULTATIONS}/${CONSULTATION_ID}/complete" \
 #
 # Rules:
 #   - One prescription per consultation (0..1)
-#   - Consultation must not be completed or cancelled
+#   - Consultation must not be cancelled
 #   - items array requires at least one item
 #   - Uses transaction (prescription + items created together)
 #
@@ -370,7 +370,7 @@ curl -X POST "${CONSULTATIONS}/${CONSULTATION_ID}/complete" \
 # { "success": false, "message": "Prescription already exists for this consultation" }
 #
 # Error (400):
-# { "success": false, "message": "Consultation already completed" }
+# { "success": false, "message": "Cannot add prescription to a cancelled consultation" }
 
 curl -X POST "${CONSULTATIONS}/${CONSULTATION_ID}/prescription" \
   -H "${JSON_HEADER}" \
@@ -418,12 +418,12 @@ curl -X GET "${PRESCRIPTIONS}/${PRESCRIPTION_ID}" \
 # { "success": true, "data": <Prescription with items> }
 #
 # Rules:
-#   - Editable only when consultation status != completed
+#   - Editable unless consultation is cancelled
 #   - Updating items replaces all existing items (transaction)
 #   - At least one field required
 #
 # Error (400):
-# { "success": false, "message": "Consultation already completed" }
+# { "success": false, "message": "Cannot update prescription for a cancelled consultation" }
 
 curl -X PUT "${PRESCRIPTIONS}/${PRESCRIPTION_ID}" \
   -H "${JSON_HEADER}" \

@@ -29,7 +29,7 @@ export const handleError = (res: Response, error: unknown) => {
     const message = getErrorMessage(error);
 
     const status =
-        message === "Employee not found"
+        message === "Employee not found" || message === "Reset request not found"
             ? 404
             : message === "Invalid credentials" ||
                 message.includes("not configured")

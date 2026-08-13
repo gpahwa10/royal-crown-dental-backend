@@ -24,6 +24,8 @@ import {
     editEmployeeSchema,
     employeeIdParamSchema,
     listEmployeesQuerySchema,
+    listPasswordResetRequestsQuerySchema,
+    passwordResetRequestIdParamSchema,
     registerHRSchema,
     registerStaffSchema,
     blockEmployeeSchema,
@@ -32,6 +34,11 @@ import {
     activateEmployeeParamsSchema,
     replaceEmployeeWorkingHoursSchema,
 } from "./employees.validation";
+import {
+    approvePasswordReset,
+    listPasswordResetRequests,
+    rejectPasswordReset,
+} from "./passwordReset.service";
 
 
 
@@ -327,6 +334,65 @@ export const putEmployeeWorkingHoursHandler = async (
             success: true,
             message: "Employee working hours updated",
             data: workingHours,
+        });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
+export const listPasswordResetRequestsHandler = async (
+    req: AuthRequest,
+    res: Response,
+) => {
+    try {
+        const query = listPasswordResetRequestsQuerySchema.parse(req.query);
+        const items = await listPasswordResetRequests(query.status);
+        return res.status(200).json({ success: true, data: { items } });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
+export const approvePasswordResetHandler = async (
+    req: AuthRequest,
+    res: Response,
+) => {
+    try {
+        if (!req.employee?.id) {
+            return res.status(401).json({ success: false, message: "Unauthorized access" });
+        }
+        const { id } = passwordResetRequestIdParamSchema.parse(req.params);
+        const result = await approvePasswordReset(id, {
+            id: req.employee.id,
+            isSuperAdmin: req.employee.isSuperAdmin,
+        });
+        return res.status(200).json({
+            success: true,
+            message: "Password reset to the default. Staff must change it on next login.",
+            data: result,
+        });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
+export const rejectPasswordResetHandler = async (
+    req: AuthRequest,
+    res: Response,
+) => {
+    try {
+        if (!req.employee?.id) {
+            return res.status(401).json({ success: false, message: "Unauthorized access" });
+        }
+        const { id } = passwordResetRequestIdParamSchema.parse(req.params);
+        const result = await rejectPasswordReset(id, {
+            id: req.employee.id,
+            isSuperAdmin: req.employee.isSuperAdmin,
+        });
+        return res.status(200).json({
+            success: true,
+            message: "Reset request rejected",
+            data: result,
         });
     } catch (error) {
         return handleError(res, error);

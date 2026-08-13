@@ -85,10 +85,6 @@ const getConsultationRecord = async (consultationId: string) => {
 const assertConsultationAllowsPrescription = async (consultationId: string) => {
     const consultation = await getConsultationRecord(consultationId);
 
-    if (consultation.status === "completed") {
-        throw new Error("Consultation already completed");
-    }
-
     if (consultation.status === "cancelled") {
         throw new Error("Cannot add prescription to a cancelled consultation");
     }
@@ -168,8 +164,8 @@ export const updatePrescription = async (
     const prescription = await getPrescriptionRecord(id);
     const consultation = await getConsultationRecord(prescription.consultationId);
 
-    if (consultation.status === "completed") {
-        throw new Error("Consultation already completed");
+    if (consultation.status === "cancelled") {
+        throw new Error("Cannot update prescription for a cancelled consultation");
     }
 
     const result = await db.transaction(async (tx) => {

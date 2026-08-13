@@ -39,7 +39,7 @@ export const createPatientSchema = z
         clinicId: z.uuid(),
         patientType: z.enum(PATIENT_TYPES),
         name: z.string().trim().min(1),
-        phone: phoneField,
+        phone: optionalPhone,
         email: optionalEmail,
         gender: z.string().trim().min(1).max(50),
         dateOfBirth: z.coerce.date(),

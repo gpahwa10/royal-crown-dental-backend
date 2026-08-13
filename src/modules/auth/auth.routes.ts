@@ -4,6 +4,7 @@ import { ensureSuperAdminCreateAccess } from "../../middleware/auth.middleware";
 import {
     changePasswordHandler,
     createSuperAdminHandler,
+    forgotPasswordHandler,
     loginHandler,
     logoutHandler,
 } from "./auth.controller";
@@ -11,6 +12,7 @@ import {
 const router = Router();
 
 router.post("/login", loginHandler);
+router.post("/forgot-password", forgotPasswordHandler);
 
 router.post(
     "/super-admin",

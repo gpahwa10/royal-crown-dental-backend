@@ -1,4 +1,5 @@
 export * from "./employees";
+export * from "./passwordResetRequests";
 export * from "./employeeRoleAssignments";
 export * from "./roles";
 export * from "./clinic";

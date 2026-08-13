@@ -211,3 +211,11 @@ export const replaceEmployeeWorkingHoursSchema = z.object({
 export const employeeIdParamSchema = z.object({
     id: z.uuid(),
 });
+
+export const passwordResetRequestIdParamSchema = z.object({
+    id: z.uuid(),
+});
+
+export const listPasswordResetRequestsQuerySchema = z.object({
+    status: z.enum(["pending", "approved", "rejected"]).optional(),
+});
