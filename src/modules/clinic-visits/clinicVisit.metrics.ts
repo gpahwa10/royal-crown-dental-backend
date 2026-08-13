@@ -5,7 +5,12 @@ import { clinicVisits } from "../../db/schema/clinicVisits";
 import { clinics } from "../../db/schema/clinic";
 import { employees } from "../../db/schema/employees";
 import { ClinicVisitRow } from "./clinicVisit.service";
-import { endOfDay, startOfDay } from "./clinicVisit.utils";
+import {
+    clinicCalendarDayEnd,
+    clinicCalendarDayStart,
+    startOfZonedDay,
+} from "../scheduling/scheduling.utils";
+import { CLINIC_TIMEZONE } from "../scheduling/scheduling.constants";
 
 export type ClinicVisitTimelineEvent = {
     type: string;
@@ -146,11 +151,11 @@ export const getClinicVisitDashboardMetrics = async (options: {
     }
 
     if (options.dateFrom) {
-        filters.push(gte(clinicVisits.visitDate, startOfDay(options.dateFrom)));
+        filters.push(gte(clinicVisits.visitDate, clinicCalendarDayStart(options.dateFrom)));
     }
 
     if (options.dateTo) {
-        filters.push(lte(clinicVisits.visitDate, endOfDay(options.dateTo)));
+        filters.push(lte(clinicVisits.visitDate, clinicCalendarDayEnd(options.dateTo)));
     }
 
     const whereClause = filters.length > 0 ? and(...filters) : undefined;
@@ -180,7 +185,7 @@ export const getClinicVisitDashboardMetrics = async (options: {
     ).length;
 
     const uniqueDays = new Set(
-        rows.map((row) => startOfDay(row.visitDate).toISOString())
+        rows.map((row) => startOfZonedDay(CLINIC_TIMEZONE, row.visitDate).toISOString())
     );
     const averageDailyVisits =
         uniqueDays.size > 0

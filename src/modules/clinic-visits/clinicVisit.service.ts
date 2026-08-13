@@ -51,11 +51,16 @@ import {
     ClinicVisitStatus,
 } from "./clinicVisit.constants";
 import {
-    endOfDay,
     generateVisitNumber,
     getPagination,
-    startOfDay,
 } from "./clinicVisit.utils";
+import {
+    clinicCalendarDayEnd,
+    clinicCalendarDayStart,
+    endOfZonedDay,
+    startOfZonedDay,
+} from "../scheduling/scheduling.utils";
+import { CLINIC_TIMEZONE } from "../scheduling/scheduling.constants";
 
 export type ClinicVisitRow = typeof clinicVisits.$inferSelect;
 
@@ -289,8 +294,8 @@ const assertNoDuplicateCheckIn = async (
                 eq(clinicVisits.clinicId, clinicId),
                 eq(clinicVisits.visitorPhone, visitorPhone),
                 inArray(clinicVisits.status, [...ACTIVE_CLINIC_VISIT_STATUSES]),
-                gte(clinicVisits.visitDate, startOfDay(visitDate)),
-                lte(clinicVisits.visitDate, endOfDay(visitDate))
+                gte(clinicVisits.visitDate, startOfZonedDay(CLINIC_TIMEZONE, visitDate)),
+                lte(clinicVisits.visitDate, endOfZonedDay(CLINIC_TIMEZONE, visitDate))
             )
         )
         .limit(1);
@@ -493,10 +498,10 @@ export const listClinicVisits = async (options: ListClinicVisitsOptions) => {
         filters.push(sql`${clinicVisits.treatmentPerformed} IS NULL`);
     }
     if (options.dateFrom) {
-        filters.push(gte(clinicVisits.visitDate, startOfDay(options.dateFrom)));
+        filters.push(gte(clinicVisits.visitDate, clinicCalendarDayStart(options.dateFrom)));
     }
     if (options.dateTo) {
-        filters.push(lte(clinicVisits.visitDate, endOfDay(options.dateTo)));
+        filters.push(lte(clinicVisits.visitDate, clinicCalendarDayEnd(options.dateTo)));
     }
     if (options.search) {
         const term = `%${options.search}%`;

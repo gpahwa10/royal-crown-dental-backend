@@ -9,6 +9,13 @@ import {
 import { hasPlatformAdminAccess } from "../auth/auth.constants";
 import { AuthRequest } from "../../middleware/auth.middleware";
 import { CLINIC_TIMEZONE } from "../scheduling/scheduling.constants";
+import {
+    endOfZonedDay,
+    startOfZonedDay,
+    zonedYmd,
+} from "../scheduling/scheduling.utils";
+
+export { endOfZonedDay, startOfZonedDay };
 
 export const handleAnalyticsError = (res: Response, error: unknown) => {
     if (error instanceof ZodError) {
@@ -76,54 +83,6 @@ export const resolveEffectiveScope = (params: {
         doctorId: resolvedDoctorId || undefined,
         isPlatformAdmin,
     };
-};
-
-const zonedYmd = (timeZone: string, reference = new Date()) => {
-    const parts = new Intl.DateTimeFormat("en-CA", {
-        timeZone,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-    }).formatToParts(reference);
-
-    return {
-        year: Number(parts.find((p) => p.type === "year")?.value),
-        month: Number(parts.find((p) => p.type === "month")?.value),
-        day: Number(parts.find((p) => p.type === "day")?.value),
-    };
-};
-
-export const startOfZonedDay = (timeZone: string, reference = new Date()) => {
-    const { year, month, day } = zonedYmd(timeZone, reference);
-    const utcNoon = new Date(Date.UTC(year, month - 1, day, 12, 0, 0, 0));
-
-    const parts = Object.fromEntries(
-        new Intl.DateTimeFormat("en-US", {
-            timeZone,
-            hourCycle: "h23",
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-        })
-            .formatToParts(utcNoon)
-            .filter((p) => p.type !== "literal")
-            .map((p) => [p.type, p.value])
-    );
-
-    const msFromMidnight =
-        ((Number(parts.hour) * 60 + Number(parts.minute)) * 60 +
-            Number(parts.second)) *
-        1000;
-
-    return new Date(utcNoon.getTime() - msFromMidnight);
-};
-
-export const endOfZonedDay = (timeZone: string, reference = new Date()) => {
-    const start = startOfZonedDay(timeZone, reference);
-    return new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
 };
 
 const addCalendarDays = (date: Date, days: number) =>

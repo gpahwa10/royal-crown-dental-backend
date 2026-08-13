@@ -119,6 +119,39 @@ export const hasPlatformAdminAccess = (user?: {
 /** Super admin account or platform-admin employee (Director / Retail Head). */
 export const isSuperAdminOrDirector = hasPlatformAdminAccess;
 
+/** Matches dashboard roles that can switch/view all clinics. */
+export const canAccessAllClinics = (user?: {
+    isSuperAdmin?: boolean;
+    roles?: string[];
+}) => {
+    if (!user) {
+        return false;
+    }
+    if (hasPlatformAdminAccess(user)) {
+        return true;
+    }
+    return (user.roles ?? []).some((role) => {
+        const name = normalizeRoleName(role);
+        return name === ROLE_HR_HEAD || name === ROLE_HR_ASSISTANT;
+    });
+};
+
+/** HR Head can manage employees across clinics (create/list/edit), like platform admins. */
+export const canManageEmployeesAcrossClinics = (user?: {
+    isSuperAdmin?: boolean;
+    roles?: string[];
+}) => {
+    if (!user) {
+        return false;
+    }
+    if (hasPlatformAdminAccess(user)) {
+        return true;
+    }
+    return (user.roles ?? []).some(
+        (role) => normalizeRoleName(role) === ROLE_HR_HEAD
+    );
+};
+
 /** Clinic roles that can view the employee/doctor list (in addition to HR and platform admins). */
 export const EMPLOYEE_LIST_VIEW_ROLES = [
     ROLE_LAB_TECHNICIAN,

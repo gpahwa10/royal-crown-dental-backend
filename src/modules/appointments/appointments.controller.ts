@@ -1,6 +1,6 @@
 import { Response } from "express";
 import { AuthRequest } from "../../middleware/auth.middleware";
-import { hasPlatformAdminAccess } from "../auth/auth.constants";
+import { hasPlatformAdminAccess, canAccessAllClinics } from "../auth/auth.constants";
 import {
     assertAppointmentClinicAccess,
     assertAppointmentShiftAccess,
@@ -27,8 +27,8 @@ const resolveClinicId = (
     req: AuthRequest,
     requestedClinicId?: string
 ): string | undefined => {
-    if (hasPlatformAdminAccess(req.employee)) {
-        return requestedClinicId ?? req.employee?.clinicId ?? undefined;
+    if (canAccessAllClinics(req.employee)) {
+        return requestedClinicId;
     }
 
     return req.employee?.clinicId;

@@ -147,6 +147,7 @@ export const editEmployeeSchema = z
         phone: z.string().min(1).optional(),
         designation: z.string().min(1).optional(),
         timings: z.string().min(1).optional(),
+        clinicId: optionalUuid,
         roles: z
             .array(roleInputSchema)
             .min(1)

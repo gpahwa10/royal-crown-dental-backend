@@ -1,4 +1,5 @@
 import { db } from "../../db/client";
+import { clinics } from "../../db/schema/clinic";
 import { employeeRoleAssignments } from "../../db/schema/employeeRoleAssignments";
 import { employees } from "../../db/schema/employees";
 import { employeeRoles } from "../../db/schema/roles";
@@ -26,6 +27,21 @@ export const DEFAULT_EMPLOYEE_PASSWORD = "Employee@123";
 
 const isUuid = (value: string) =>
     z.uuid().safeParse(value).success;
+
+const assertClinicExists = async (clinicId: string) => {
+    const [clinic] = await db
+        .select({ id: clinics.id, isActive: clinics.isActive })
+        .from(clinics)
+        .where(eq(clinics.id, clinicId));
+
+    if (!clinic) {
+        throw new Error("Clinic not found");
+    }
+
+    if (!clinic.isActive) {
+        throw new Error("Clinic is not active");
+    }
+};
 
 const getRoleByName = async (name: string) => {
     const normalizedName = normalizeRoleName(name);
@@ -151,6 +167,7 @@ export interface EditEmployeeInput {
     phone?: string;
     designation?: string;
     timings?: string;
+    clinicId?: string;
     roles?: string[];
 }
 
@@ -388,6 +405,10 @@ export const editEmployee = async (input: EditEmployeeInput) => {
     }
     if (input.timings !== undefined) {
         updateData.timings = input.timings;
+    }
+    if (input.clinicId !== undefined) {
+        await assertClinicExists(input.clinicId);
+        updateData.clinicId = input.clinicId;
     }
 
     const [employee] = await db

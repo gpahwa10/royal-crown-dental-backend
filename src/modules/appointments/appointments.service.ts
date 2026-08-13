@@ -22,10 +22,13 @@ import { AppointmentStatus, AppointmentType } from "./appointments.constants";
 import {
     buildPaginationMeta,
     buildScheduledAt,
-    endOfDay,
     generateAppointmentCode,
     getPagination,
 } from "./appointments.utils";
+import {
+    clinicCalendarDayEnd,
+    clinicCalendarDayStart,
+} from "../scheduling/scheduling.utils";
 import {
     assertAppointmentScheduleValid,
     listAvailableDoctors,
@@ -419,11 +422,15 @@ export const listAppointments = async (options: ListAppointmentsOptions) => {
     }
 
     if (options.dateFrom) {
-        filters.push(gte(appointments.scheduledAt, options.dateFrom));
+        filters.push(
+            gte(appointments.scheduledAt, clinicCalendarDayStart(options.dateFrom))
+        );
     }
 
     if (options.dateTo) {
-        filters.push(lte(appointments.scheduledAt, endOfDay(options.dateTo)));
+        filters.push(
+            lte(appointments.scheduledAt, clinicCalendarDayEnd(options.dateTo))
+        );
     }
 
     if (options.search) {

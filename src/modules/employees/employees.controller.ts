@@ -2,7 +2,7 @@ import { Response } from "express";
 import { AuthRequest } from "../../middleware/auth.middleware";
 import {
     canListEmployees,
-    hasPlatformAdminAccess,
+    canManageEmployeesAcrossClinics,
     isDoctorEmployee,
     ROLE_DOCTOR,
 } from "../auth/auth.constants";
@@ -42,7 +42,7 @@ export const registerStaffHandler = async (
     try {
         const body = registerStaffSchema.parse(req.body);
 
-        const clinicId = hasPlatformAdminAccess(req.employee)
+        const clinicId = canManageEmployeesAcrossClinics(req.employee)
             ? body.clinicId
             : req.employee?.clinicId;
 
@@ -85,12 +85,13 @@ export const listEmployeesHandler = async (req: AuthRequest, res: Response) => {
         const query = listEmployeesQuerySchema.parse(req.query);
         const hasFullListAccess = canListEmployees(req.employee);
         const isDoctorSelectOnly = !hasFullListAccess;
+        const canPickClinic = canManageEmployeesAcrossClinics(req.employee);
 
-        const clinicId = hasPlatformAdminAccess(req.employee)
+        const clinicId = canPickClinic
             ? query.clinicId
             : req.employee?.clinicId;
 
-        if (!clinicId) {
+        if (!canPickClinic && !clinicId) {
             return res.status(400).json({
                 success: false,
                 message: "clinicId is required",
@@ -98,7 +99,7 @@ export const listEmployeesHandler = async (req: AuthRequest, res: Response) => {
         }
 
         if (
-            !hasPlatformAdminAccess(req.employee) &&
+            !canPickClinic &&
             query.clinicId &&
             query.clinicId !== req.employee?.clinicId
         ) {
@@ -146,7 +147,7 @@ export const editEmployeeHandler = async (req: AuthRequest, res: Response) => {
         }
 
         if (
-            !hasPlatformAdminAccess(req.employee) &&
+            !canManageEmployeesAcrossClinics(req.employee) &&
             existing.clinicId !== req.employee?.clinicId
         ) {
             return res.status(403).json({
@@ -155,9 +156,23 @@ export const editEmployeeHandler = async (req: AuthRequest, res: Response) => {
             });
         }
 
+        if (
+            body.clinicId &&
+            body.clinicId !== existing.clinicId &&
+            !canManageEmployeesAcrossClinics(req.employee)
+        ) {
+            return res.status(403).json({
+                success: false,
+                message: "You cannot move employees to another clinic",
+            });
+        }
+
         const result = await editEmployee({
             id,
             ...body,
+            clinicId: canManageEmployeesAcrossClinics(req.employee)
+                ? body.clinicId
+                : undefined,
         });
 
         return res.status(200).json({ success: true, data: result });
@@ -178,7 +193,7 @@ export const blockEmployeeHandler = async (req: AuthRequest, res: Response) => {
             });
         }
         if (
-            !hasPlatformAdminAccess(req.employee) &&
+            !canManageEmployeesAcrossClinics(req.employee) &&
             existing.clinicId !== req.employee?.clinicId
         ) {
             return res.status(403).json({
@@ -212,7 +227,7 @@ export const suspendEmployeeHandler = async (req: AuthRequest, res: Response) =>
             });
         }
         if (
-            !hasPlatformAdminAccess(req.employee) &&
+            !canManageEmployeesAcrossClinics(req.employee) &&
             existing.clinicId !== req.employee?.clinicId
         ) {
             return res.status(403).json({
@@ -239,7 +254,7 @@ export const activateEmployeeHandler = async (req: AuthRequest, res: Response) =
             });
         }
         if (
-            !hasPlatformAdminAccess(req.employee) &&
+            !canManageEmployeesAcrossClinics(req.employee) &&
             existing.clinicId !== req.employee?.clinicId
         ) {
             return res.status(403).json({
@@ -267,7 +282,7 @@ export const getEmployeeWorkingHoursHandler = async (
             });
         }
         if (
-            !hasPlatformAdminAccess(req.employee) &&
+            !canManageEmployeesAcrossClinics(req.employee) &&
             existing.clinicId !== req.employee?.clinicId
         ) {
             return res.status(403).json({
@@ -298,7 +313,7 @@ export const putEmployeeWorkingHoursHandler = async (
             });
         }
         if (
-            !hasPlatformAdminAccess(req.employee) &&
+            !canManageEmployeesAcrossClinics(req.employee) &&
             existing.clinicId !== req.employee?.clinicId
         ) {
             return res.status(403).json({
