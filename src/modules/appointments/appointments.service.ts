@@ -604,13 +604,9 @@ export const updateAppointmentStatus = async (
 
 export const assertAppointmentClinicAccess = (
     appointmentClinicId: string,
-    hasPlatformAccess: boolean,
+    _hasPlatformAccess: boolean,
     requesterClinicId?: string | null
 ) => {
-    if (hasPlatformAccess) {
-        return;
-    }
-
     if (
         !requesterClinicId ||
         appointmentClinicId !== requesterClinicId
@@ -622,22 +618,16 @@ export const assertAppointmentClinicAccess = (
 export const assertAppointmentShiftAccess = (
     sourceClinicId: string,
     targetClinicId: string,
-    hasPlatformAccess: boolean,
+    _hasPlatformAccess: boolean,
     requesterClinicId?: string | null
 ) => {
-    if (hasPlatformAccess) {
-        return;
-    }
-
     if (
-        requesterClinicId &&
-        (requesterClinicId === sourceClinicId ||
-            requesterClinicId === targetClinicId)
+        !requesterClinicId ||
+        sourceClinicId !== requesterClinicId ||
+        targetClinicId !== requesterClinicId
     ) {
-        return;
+        throw new Error("You cannot shift appointments to another clinic");
     }
-
-    throw new Error("You cannot shift appointments for another clinic");
 };
 
 export const shiftAppointmentClinic = async (

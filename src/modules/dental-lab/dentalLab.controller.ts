@@ -39,13 +39,9 @@ import {
 
 const resolveClinicId = (
     req: AuthRequest,
-    requestedClinicId?: string
+    _requestedClinicId?: string
 ): string | undefined => {
-    if (hasPlatformAdminAccess(req.employee)) {
-        return requestedClinicId ?? req.employee?.clinicId ?? undefined;
-    }
-
-    return req.employee?.clinicId;
+    return req.clinicId;
 };
 
 const shouldScopeToDoctor = (req: AuthRequest) => {
@@ -71,9 +67,7 @@ export const createDentalLabOrderHandler = async (
     try {
         const body = createDentalLabOrderSchema.parse(req.body);
 
-        const clinicId = hasPlatformAdminAccess(req.employee)
-            ? body.clinicId
-            : req.employee?.clinicId ?? body.clinicId;
+        const clinicId = req.clinicId;
 
         if (!clinicId) {
             return res.status(400).json({
@@ -132,7 +126,7 @@ export const getDentalLabOrderHandler = async (
         assertDentalLabOrderClinicAccess(
             details.order.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         if (
@@ -165,7 +159,7 @@ export const updateDentalLabOrderHandler = async (
         assertDentalLabOrderClinicAccess(
             existing.order.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         if (
@@ -199,7 +193,7 @@ export const deliverDentalLabOrderHandler = async (
         assertDentalLabOrderClinicAccess(
             existing.order.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const result = await deliverDentalLabOrder(id);
@@ -221,7 +215,7 @@ export const createCementationAppointmentHandler = async (
         assertDentalLabOrderClinicAccess(
             existing.order.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const result = await createCementationAppointment(id, body);
@@ -243,7 +237,7 @@ export const recordCementationHandler = async (
         assertDentalLabOrderClinicAccess(
             existing.order.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const result = await recordCementation(id, body);
@@ -265,7 +259,7 @@ export const attachDentalLabFileHandler = async (
         assertDentalLabOrderClinicAccess(
             existing.order.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const result = await attachDentalLabFile(id, body.fileId);
@@ -288,7 +282,7 @@ export const removeDentalLabFileHandler = async (
         assertDentalLabOrderClinicAccess(
             existing.order.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const result = await removeDentalLabFile(id, fileId);
@@ -309,7 +303,7 @@ export const listPatientDentalLabOrdersHandler = async (
         assertPatientClinicAccess(
             patientDetails.patient.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const orders = await listDentalLabOrdersByPatientId(patientId);

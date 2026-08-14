@@ -632,13 +632,9 @@ export const convertLeadToPatient = async (
 
 export const assertLeadClinicAccess = (
     leadClinicId: string,
-    hasPlatformAccess: boolean,
+    _hasPlatformAccess: boolean,
     requesterClinicId?: string | null
 ) => {
-    if (hasPlatformAccess) {
-        return;
-    }
-
     if (!requesterClinicId || leadClinicId !== requesterClinicId) {
         throw new Error("You cannot access leads from another clinic");
     }

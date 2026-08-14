@@ -116,7 +116,7 @@ const REGISTERABLE_LEADERSHIP_ROLES = [
 
 export const registerHRSchema = registerBaseSchema
     .extend({
-        clinicId: z.uuid(),
+        clinicId: z.uuid().optional(),
         roles: z
             .array(z.enum(REGISTERABLE_LEADERSHIP_ROLES))
             .min(1)

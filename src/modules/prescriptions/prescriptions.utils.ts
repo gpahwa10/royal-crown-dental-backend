@@ -53,13 +53,9 @@ export const handleError = (res: Response, error: unknown) => {
 
 export const assertPrescriptionClinicAccess = (
     clinicId: string,
-    hasPlatformAccess: boolean,
+    _hasPlatformAccess: boolean,
     requesterClinicId?: string | null
 ) => {
-    if (hasPlatformAccess) {
-        return;
-    }
-
     if (!requesterClinicId || clinicId !== requesterClinicId) {
         throw new Error("You cannot access prescriptions from another clinic");
     }

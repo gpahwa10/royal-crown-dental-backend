@@ -128,13 +128,9 @@ export const endOfDay = (date: Date) => {
 
 export const assertClinicVisitClinicAccess = (
     visitClinicId: string,
-    hasPlatformAccess: boolean,
+    _hasPlatformAccess: boolean,
     requesterClinicId?: string | null
 ) => {
-    if (hasPlatformAccess) {
-        return;
-    }
-
     if (!requesterClinicId || visitClinicId !== requesterClinicId) {
         throw new Error("You cannot access clinic visits from another clinic");
     }

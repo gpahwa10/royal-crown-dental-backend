@@ -26,7 +26,7 @@ export const presignUploadHandler = async (req: AuthRequest, res: Response) => {
         assertPatientClinicAccess(
             patientDetails.patient.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const result = await presignUpload({
@@ -53,7 +53,7 @@ export const registerUploadHandler = async (
         assertFileClinicAccess(
             existing.file.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const file = await registerUpload(id, body);
@@ -73,7 +73,7 @@ export const getUploadHandler = async (req: AuthRequest, res: Response) => {
         assertFileClinicAccess(
             result.file.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         return res.status(200).json({ success: true, data: result });
@@ -94,7 +94,7 @@ export const listPatientUploadsHandler = async (
         assertPatientClinicAccess(
             patientDetails.patient.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const result = await listPatientUploads(patientId, {

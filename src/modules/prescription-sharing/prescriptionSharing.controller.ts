@@ -36,7 +36,7 @@ export const uploadPrescriptionHandler = async (
         assertPrescriptionClinicAccess(
             fields.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const result = await uploadPrescriptionPdf({
@@ -66,7 +66,7 @@ export const getPrescriptionFileHandler = async (
         assertPrescriptionClinicAccess(
             meta.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         return res.status(200).json({ success: true, data: meta });
@@ -86,7 +86,7 @@ export const downloadPrescriptionFileHandler = async (
         assertPrescriptionClinicAccess(
             clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const result = await getAuthenticatedDownloadUrl(id);

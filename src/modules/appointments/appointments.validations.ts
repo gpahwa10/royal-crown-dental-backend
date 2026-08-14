@@ -108,7 +108,7 @@ export const shiftAppointmentClinicSchema = z.object({
 });
 
 export const availableDoctorsQuerySchema = z.object({
-    clinicId: z.uuid(),
+    clinicId: z.uuid().optional(),
     date: z
         .string()
         .regex(/^\d{4}-\d{2}-\d{2}$/, "date must be YYYY-MM-DD"),

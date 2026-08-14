@@ -31,13 +31,9 @@ import {
 
 const resolveClinicId = (
     req: AuthRequest,
-    requestedClinicId?: string
+    _requestedClinicId?: string
 ): string | undefined => {
-    if (hasPlatformAdminAccess(req.employee)) {
-        return requestedClinicId ?? req.employee?.clinicId ?? undefined;
-    }
-
-    return req.employee?.clinicId;
+    return req.clinicId;
 };
 
 export const createInvoiceHandler = async (req: AuthRequest, res: Response) => {
@@ -45,9 +41,7 @@ export const createInvoiceHandler = async (req: AuthRequest, res: Response) => {
         assertFinancialWriteAccess(req);
         const body = createInvoiceSchema.parse(req.body);
 
-        const clinicId = hasPlatformAdminAccess(req.employee)
-            ? body.clinicId
-            : req.employee?.clinicId ?? body.clinicId;
+        const clinicId = req.clinicId;
 
         if (!clinicId) {
             return res.status(400).json({
@@ -98,7 +92,7 @@ export const getInvoiceHandler = async (req: AuthRequest, res: Response) => {
         assertInvoiceClinicAccess(
             invoice.invoice.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         return res.status(200).json({ success: true, data: invoice });
@@ -117,7 +111,7 @@ export const updateInvoiceHandler = async (req: AuthRequest, res: Response) => {
         assertInvoiceClinicAccess(
             existing.invoice.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const invoice = await updateInvoice(id, body);
@@ -137,7 +131,7 @@ export const cancelInvoiceHandler = async (req: AuthRequest, res: Response) => {
         assertInvoiceClinicAccess(
             existing.invoice.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const invoice = await cancelInvoice(id);
@@ -160,7 +154,7 @@ export const createInvoicePaymentHandler = async (
         assertInvoiceClinicAccess(
             existing.invoice.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const result = await recordInvoicePayment(id, {
@@ -187,7 +181,7 @@ export const listPatientInvoicesHandler = async (
         assertPatientClinicAccess(
             patientDetails.patient.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const invoices = await listInvoicesByPatientId(patientId);

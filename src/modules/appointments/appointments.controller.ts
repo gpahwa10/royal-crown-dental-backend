@@ -1,6 +1,6 @@
 import { Response } from "express";
 import { AuthRequest } from "../../middleware/auth.middleware";
-import { hasPlatformAdminAccess, canAccessAllClinics } from "../auth/auth.constants";
+import { hasPlatformAdminAccess } from "../auth/auth.constants";
 import {
     assertAppointmentClinicAccess,
     assertAppointmentShiftAccess,
@@ -25,13 +25,9 @@ import {
 
 const resolveClinicId = (
     req: AuthRequest,
-    requestedClinicId?: string
+    _requestedClinicId?: string
 ): string | undefined => {
-    if (canAccessAllClinics(req.employee)) {
-        return requestedClinicId;
-    }
-
-    return req.employee?.clinicId;
+    return req.clinicId;
 };
 
 export const listAvailableDoctorsHandler = async (
@@ -41,9 +37,7 @@ export const listAvailableDoctorsHandler = async (
     try {
         const query = availableDoctorsQuerySchema.parse(req.query);
 
-        const clinicId = hasPlatformAdminAccess(req.employee)
-            ? query.clinicId
-            : req.employee?.clinicId ?? query.clinicId;
+        const clinicId = req.clinicId;
 
         if (!clinicId) {
             return res.status(400).json({
@@ -54,7 +48,7 @@ export const listAvailableDoctorsHandler = async (
 
         if (
             !hasPlatformAdminAccess(req.employee) &&
-            clinicId !== req.employee?.clinicId
+            clinicId !== req.clinicId
         ) {
             return res.status(403).json({
                 success: false,
@@ -82,9 +76,7 @@ export const createAppointmentHandler = async (
     try {
         const body = createAppointmentSchema.parse(req.body);
 
-        const clinicId = hasPlatformAdminAccess(req.employee)
-            ? body.clinicId
-            : req.employee?.clinicId ?? body.clinicId;
+        const clinicId = req.clinicId;
 
         if (!clinicId) {
             return res.status(400).json({
@@ -142,7 +134,7 @@ export const getAppointmentByIdHandler = async (
         assertAppointmentClinicAccess(
             appointment.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         return res.status(200).json({ success: true, data: appointment });
@@ -163,13 +155,13 @@ export const updateAppointmentHandler = async (
         assertAppointmentClinicAccess(
             existing.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         if (
             body.clinicId &&
             !hasPlatformAdminAccess(req.employee) &&
-            body.clinicId !== req.employee?.clinicId
+            body.clinicId !== req.clinicId
         ) {
             return res.status(403).json({
                 success: false,
@@ -196,7 +188,7 @@ export const updateAppointmentStatusHandler = async (
         assertAppointmentClinicAccess(
             existing.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const appointment = await updateAppointmentStatus(id, body.status);
@@ -219,7 +211,7 @@ export const shiftAppointmentClinicHandler = async (
             existing.clinicId,
             body.newClinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const appointment = await shiftAppointmentClinic(id, body.newClinicId);

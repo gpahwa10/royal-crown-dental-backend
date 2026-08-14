@@ -110,13 +110,9 @@ export const generateServiceCode = async (
 
 export const assertServiceCatalogClinicAccess = (
     serviceClinicId: string,
-    hasPlatformAccess: boolean,
+    _hasPlatformAccess: boolean,
     requesterClinicId?: string | null
 ) => {
-    if (hasPlatformAccess) {
-        return;
-    }
-
     if (!requesterClinicId || serviceClinicId !== requesterClinicId) {
         throw new Error("You cannot access services from another clinic");
     }

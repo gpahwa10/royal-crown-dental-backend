@@ -9,6 +9,7 @@ import {
     hasPlatformAdminAccess,
     SALT_ROUNDS,
 } from "./auth.constants";
+import { appConfig } from "../../config/app.config";
 
 type EmployeeRecord = typeof employees.$inferSelect;
 type SuperAdminRecord = typeof superAdmins.$inferSelect;
@@ -72,7 +73,7 @@ const buildSuperAdminToken = (
 ) =>
     generateToken({
         id: admin.id,
-        clinicId: null,
+        clinicId: appConfig.clinicId,
         roles: [],
         isSuperAdmin: true,
         mustChangePassword:
@@ -93,6 +94,10 @@ export const login = async (email: string, password: string) => {
 
     if (employee) {
         assertEmployeeCanLogin(employee);
+
+        if (employee.clinicId !== appConfig.clinicId) {
+            throw new Error("You cannot access another clinic");
+        }
 
         const isPasswordValid = await bcrypt.compare(
             password,
@@ -123,7 +128,7 @@ export const login = async (email: string, password: string) => {
                 isSuperAdmin: false,
                 roles,
             }),
-            clinicId: employee.clinicId,
+            clinicId: appConfig.clinicId,
             mustChangePassword: employee.mustChangePassword,
         };
     }
@@ -161,7 +166,7 @@ export const login = async (email: string, password: string) => {
         roles: [] as string[],
         isSuperAdmin: true,
         hasPlatformAdminAccess: true,
-        clinicId: null,
+        clinicId: appConfig.clinicId,
         mustChangePassword: admin.mustChangePassword,
     };
 };

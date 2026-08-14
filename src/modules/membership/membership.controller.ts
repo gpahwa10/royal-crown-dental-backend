@@ -1,6 +1,8 @@
 import { Response } from "express";
 import { AuthRequest } from "../../middleware/auth.middleware";
 import { assertFinancialWriteAccess } from "../billing/billing.utils";
+import { getPatientDetails } from "../patients/patients.service";
+import { assertPatientClinicAccess } from "../patients/patients.utils";
 import {
     completeMembershipPayment,
     createMembershipBenefit,
@@ -151,6 +153,12 @@ export const purchasePatientMembershipHandler = async (
     try {
         assertFinancialWriteAccess(req);
         const body = purchasePatientMembershipSchema.parse(req.body);
+        const patient = await getPatientDetails(body.patientId);
+        assertPatientClinicAccess(
+            patient.patient.clinicId,
+            false,
+            req.clinicId
+        );
 
         const result = await purchasePatientMembership({
             ...body,

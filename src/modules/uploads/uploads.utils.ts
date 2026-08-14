@@ -63,13 +63,9 @@ export const getPagination = (page?: number, limit?: number) => {
 
 export const assertFileClinicAccess = (
     fileClinicId: string,
-    hasPlatformAccess: boolean,
+    _hasPlatformAccess: boolean,
     requesterClinicId?: string | null
 ) => {
-    if (hasPlatformAccess) {
-        return;
-    }
-
     if (!requesterClinicId || fileClinicId !== requesterClinicId) {
         throw new Error("You cannot access files from another clinic");
     }

@@ -88,13 +88,9 @@ export const generateConsultationCode = async (executor: DbExecutor = db) => {
 
 export const assertConsultationClinicAccess = (
     consultationClinicId: string,
-    hasPlatformAccess: boolean,
+    _hasPlatformAccess: boolean,
     requesterClinicId?: string | null
 ) => {
-    if (hasPlatformAccess) {
-        return;
-    }
-
     if (!requesterClinicId || consultationClinicId !== requesterClinicId) {
         throw new Error("You cannot access consultations from another clinic");
     }

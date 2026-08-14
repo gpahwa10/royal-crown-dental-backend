@@ -42,6 +42,8 @@ export const handleError = (res: Response, error: unknown) => {
         : message.includes("already exists") ||
             message.includes("duplicate key")
           ? 409
+          : message.includes("cannot access")
+            ? 403
           : message.includes("Insufficient stock") ||
               message.includes("not configured")
             ? 400

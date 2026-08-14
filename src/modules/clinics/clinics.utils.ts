@@ -66,10 +66,13 @@ export const assertClinicReadAccess = (
     clinicId: string
 ) => {
     if (hasPlatformAdminAccess(req.employee)) {
+        if (clinicId !== req.clinicId) {
+            throw new Error("You cannot access clinics outside this deployment");
+        }
         return;
     }
 
-    if (!req.employee?.clinicId || req.employee.clinicId !== clinicId) {
+    if (!req.clinicId || req.clinicId !== clinicId) {
         throw new Error("You cannot access clinics outside your assignment");
     }
 };

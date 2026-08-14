@@ -116,13 +116,9 @@ export const assertFinancialWriteAccess = (req: AuthRequest) => {
 
 export const assertInvoiceClinicAccess = (
     invoiceClinicId: string,
-    hasPlatformAccess: boolean,
+    _hasPlatformAccess: boolean,
     requesterClinicId?: string | null
 ) => {
-    if (hasPlatformAccess) {
-        return;
-    }
-
     if (!requesterClinicId || invoiceClinicId !== requesterClinicId) {
         throw new Error("You cannot access invoices from another clinic");
     }

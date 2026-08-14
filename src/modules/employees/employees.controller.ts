@@ -2,7 +2,6 @@ import { Response } from "express";
 import { AuthRequest } from "../../middleware/auth.middleware";
 import {
     canListEmployees,
-    canManageEmployeesAcrossClinics,
     isDoctorEmployee,
     ROLE_DOCTOR,
 } from "../auth/auth.constants";
@@ -49,9 +48,7 @@ export const registerStaffHandler = async (
     try {
         const body = registerStaffSchema.parse(req.body);
 
-        const clinicId = canManageEmployeesAcrossClinics(req.employee)
-            ? body.clinicId
-            : req.employee?.clinicId;
+        const clinicId = req.clinicId;
 
         if (!clinicId) {
             return res.status(400).json({
@@ -78,6 +75,7 @@ export const registerHRHandler = async (req: AuthRequest, res: Response) => {
 
         const result = await registerHR({
             ...body,
+            clinicId: req.clinicId!,
             phone: body.phone ?? "",
         });
 
@@ -92,28 +90,12 @@ export const listEmployeesHandler = async (req: AuthRequest, res: Response) => {
         const query = listEmployeesQuerySchema.parse(req.query);
         const hasFullListAccess = canListEmployees(req.employee);
         const isDoctorSelectOnly = !hasFullListAccess;
-        const canPickClinic = canManageEmployeesAcrossClinics(req.employee);
+        const clinicId = req.clinicId;
 
-        const clinicId = canPickClinic
-            ? query.clinicId
-            : req.employee?.clinicId;
-
-        if (!canPickClinic && !clinicId) {
+        if (!clinicId) {
             return res.status(400).json({
                 success: false,
                 message: "clinicId is required",
-            });
-        }
-
-        if (
-            !canPickClinic &&
-            query.clinicId &&
-            query.clinicId !== req.employee?.clinicId
-        ) {
-            return res.status(403).json({
-                success: false,
-                message:
-                    "You cannot list employees from another clinic",
             });
         }
 
@@ -153,21 +135,14 @@ export const editEmployeeHandler = async (req: AuthRequest, res: Response) => {
             });
         }
 
-        if (
-            !canManageEmployeesAcrossClinics(req.employee) &&
-            existing.clinicId !== req.employee?.clinicId
-        ) {
+        if (existing.clinicId !== req.clinicId) {
             return res.status(403).json({
                 success: false,
                 message: "You cannot edit employees from another clinic",
             });
         }
 
-        if (
-            body.clinicId &&
-            body.clinicId !== existing.clinicId &&
-            !canManageEmployeesAcrossClinics(req.employee)
-        ) {
+        if (body.clinicId && body.clinicId !== req.clinicId) {
             return res.status(403).json({
                 success: false,
                 message: "You cannot move employees to another clinic",
@@ -177,9 +152,7 @@ export const editEmployeeHandler = async (req: AuthRequest, res: Response) => {
         const result = await editEmployee({
             id,
             ...body,
-            clinicId: canManageEmployeesAcrossClinics(req.employee)
-                ? body.clinicId
-                : undefined,
+            clinicId: undefined,
         });
 
         return res.status(200).json({ success: true, data: result });
@@ -200,8 +173,7 @@ export const blockEmployeeHandler = async (req: AuthRequest, res: Response) => {
             });
         }
         if (
-            !canManageEmployeesAcrossClinics(req.employee) &&
-            existing.clinicId !== req.employee?.clinicId
+            existing.clinicId !== req.clinicId
         ) {
             return res.status(403).json({
                 success: false,
@@ -234,8 +206,7 @@ export const suspendEmployeeHandler = async (req: AuthRequest, res: Response) =>
             });
         }
         if (
-            !canManageEmployeesAcrossClinics(req.employee) &&
-            existing.clinicId !== req.employee?.clinicId
+            existing.clinicId !== req.clinicId
         ) {
             return res.status(403).json({
                 success: false,
@@ -261,8 +232,7 @@ export const activateEmployeeHandler = async (req: AuthRequest, res: Response) =
             });
         }
         if (
-            !canManageEmployeesAcrossClinics(req.employee) &&
-            existing.clinicId !== req.employee?.clinicId
+            existing.clinicId !== req.clinicId
         ) {
             return res.status(403).json({
                 success: false,
@@ -289,8 +259,7 @@ export const getEmployeeWorkingHoursHandler = async (
             });
         }
         if (
-            !canManageEmployeesAcrossClinics(req.employee) &&
-            existing.clinicId !== req.employee?.clinicId
+            existing.clinicId !== req.clinicId
         ) {
             return res.status(403).json({
                 success: false,
@@ -320,8 +289,7 @@ export const putEmployeeWorkingHoursHandler = async (
             });
         }
         if (
-            !canManageEmployeesAcrossClinics(req.employee) &&
-            existing.clinicId !== req.employee?.clinicId
+            existing.clinicId !== req.clinicId
         ) {
             return res.status(403).json({
                 success: false,
@@ -346,7 +314,10 @@ export const listPasswordResetRequestsHandler = async (
 ) => {
     try {
         const query = listPasswordResetRequestsQuerySchema.parse(req.query);
-        const items = await listPasswordResetRequests(query.status);
+        const items = await listPasswordResetRequests(
+            query.status,
+            req.clinicId
+        );
         return res.status(200).json({ success: true, data: { items } });
     } catch (error) {
         return handleError(res, error);

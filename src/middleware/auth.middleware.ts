@@ -1,12 +1,14 @@
 import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
+import { appConfig } from "../config/app.config";
 import { requireSuperAdmin } from "./superAdmin.middleware";
 import { hasSuperAdmins } from "../modules/auth/auth.service";
 
 export interface AuthRequest extends Request {
+    clinicId?: string;
     employee?: {
         id: string;
-        clinicId: string;
+        clinicId: string | null;
         roles: string[];
         isSuperAdmin: boolean;
         mustChangePassword?: boolean;
@@ -51,6 +53,18 @@ export const authenticate = (
         ) as AuthRequest["employee"];
 
         req.employee = decoded;
+
+        if (decoded && !decoded.isSuperAdmin) {
+            if (
+                !decoded.clinicId ||
+                decoded.clinicId !== appConfig.clinicId
+            ) {
+                return res.status(403).json({
+                    success: false,
+                    message: "You cannot access another clinic",
+                });
+            }
+        }
 
         if (
             decoded?.mustChangePassword &&

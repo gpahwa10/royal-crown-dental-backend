@@ -1,0 +1,134 @@
+#!/usr/bin/env bash
+# =============================================================================
+# Dental Backend — Single-clinic deployment (CLINIC_ID)
+# =============================================================================
+#
+# This instance is pinned to one clinic via CLINIC_ID in the server environment.
+# The frontend must NOT send clinicId to switch tenants. The backend ignores
+# or rejects client-provided clinic IDs.
+#
+# Setup:
+#   export BASE_URL="http://localhost:4000"
+#   export TOKEN="<jwt>"
+#   export CLINIC_ID="<configured-clinic-uuid>"
+#   export OTHER_CLINIC_ID="<some-other-clinic-uuid>"
+#   export OTHER_PATIENT_ID="<patient-uuid-from-another-clinic>"
+#
+# =============================================================================
+
+BASE_URL="${BASE_URL:-http://localhost:4000}"
+TOKEN="${TOKEN:-YOUR_JWT_TOKEN}"
+AUTH_HEADER="Authorization: Bearer ${TOKEN}"
+JSON_HEADER="Content-Type: application/json"
+
+
+# =============================================================================
+# 1 — LOGIN (configured clinic employee or super admin)
+# =============================================================================
+#
+# Super admin is allowed. Employees whose clinicId !== CLINIC_ID receive 403.
+#
+# Success (200):
+#   data.isSuperAdmin = true | false
+#   data.clinicId     = configured CLINIC_ID
+#   data.hasPlatformAdminAccess = true for super admin
+
+curl -X POST "${BASE_URL}/api/auth/login" \
+  -H "${JSON_HEADER}" \
+  -d '{
+    "email": "superadmin@royalcrown.com",
+    "password": "SuperAdmin@123"
+  }'
+
+
+# =============================================================================
+# 2 — CURRENT CLINIC
+# =============================================================================
+#
+# GET /api/clinics always returns only the configured clinic.
+
+curl -X GET "${BASE_URL}/api/clinics" \
+  -H "${AUTH_HEADER}"
+
+
+# GET /api/clinics/:id for the configured clinic (200)
+
+curl -X GET "${BASE_URL}/api/clinics/${CLINIC_ID}" \
+  -H "${AUTH_HEADER}"
+
+
+# GET /api/clinics/:id for another clinic (403)
+
+curl -X GET "${BASE_URL}/api/clinics/${OTHER_CLINIC_ID}" \
+  -H "${AUTH_HEADER}"
+
+
+# POST /api/clinics is blocked on this deployment (403)
+
+curl -X POST "${BASE_URL}/api/clinics" \
+  -H "${AUTH_HEADER}" \
+  -H "${JSON_HEADER}" \
+  -d '{
+    "clinicName": "Another Clinic"
+  }'
+
+
+# =============================================================================
+# 3 — SCOPED READS (clinic comes from the server, not the query)
+# =============================================================================
+
+curl -X GET "${BASE_URL}/api/patients" \
+  -H "${AUTH_HEADER}"
+
+curl -X GET "${BASE_URL}/api/appointments" \
+  -H "${AUTH_HEADER}"
+
+curl -X GET "${BASE_URL}/api/analytics/dashboard" \
+  -H "${AUTH_HEADER}"
+
+
+# Query clinicId is ignored; results stay on CLINIC_ID
+
+curl -X GET "${BASE_URL}/api/patients?clinicId=${OTHER_CLINIC_ID}" \
+  -H "${AUTH_HEADER}"
+
+curl -X GET "${BASE_URL}/api/analytics/revenue?clinicId=${OTHER_CLINIC_ID}" \
+  -H "${AUTH_HEADER}"
+
+
+# =============================================================================
+# 4 — CREATE (body clinicId is ignored / cannot switch tenant)
+# =============================================================================
+
+curl -X POST "${BASE_URL}/api/patients" \
+  -H "${AUTH_HEADER}" \
+  -H "${JSON_HEADER}" \
+  -d '{
+    "name": "Test Patient",
+    "phone": "9000000099",
+    "clinicId": "'"${OTHER_CLINIC_ID}"'"
+  }'
+
+
+# =============================================================================
+# 5 — CROSS-CLINIC FAILURES (403)
+# =============================================================================
+#
+# Patient / appointment / consultation / invoice from another clinic:
+
+curl -X GET "${BASE_URL}/api/patients/${OTHER_PATIENT_ID}" \
+  -H "${AUTH_HEADER}"
+
+# Expected: 403 { "success": false, "message": "You cannot access patients from another clinic" }
+
+
+# Employee from another clinic cannot login:
+
+curl -X POST "${BASE_URL}/api/auth/login" \
+  -H "${JSON_HEADER}" \
+  -d '{
+    "email": "other-clinic-staff@example.com",
+    "password": "TheirPassword123"
+  }'
+
+# Expected: 403 { "success": false, "message": "You cannot access another clinic" }

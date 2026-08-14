@@ -36,7 +36,7 @@ export const clinicIdParamSchema = z.object({
 
 export const createPatientSchema = z
     .object({
-        clinicId: z.uuid(),
+        clinicId: z.uuid().optional(),
         patientType: z.enum(PATIENT_TYPES),
         name: z.string().trim().min(1),
         phone: optionalPhone,

@@ -28,13 +28,9 @@ import {
 
 const resolveClinicId = (
     req: AuthRequest,
-    requestedClinicId?: string
+    _requestedClinicId?: string
 ): string | undefined => {
-    if (hasPlatformAdminAccess(req.employee)) {
-        return requestedClinicId ?? req.employee?.clinicId ?? undefined;
-    }
-
-    return req.employee?.clinicId;
+    return req.clinicId;
 };
 
 export const createLabRequestHandler = async (
@@ -44,9 +40,7 @@ export const createLabRequestHandler = async (
     try {
         const body = createLabRequestSchema.parse(req.body);
 
-        const clinicId = hasPlatformAdminAccess(req.employee)
-            ? body.clinicId
-            : req.employee?.clinicId ?? body.clinicId;
+        const clinicId = req.clinicId;
 
         if (!clinicId) {
             return res.status(400).json({
@@ -99,7 +93,7 @@ export const getLabRequestHandler = async (req: AuthRequest, res: Response) => {
         assertLabRequestClinicAccess(
             details.request.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         return res.status(200).json({ success: true, data: details });
@@ -120,7 +114,7 @@ export const moveLabRequestToExaminationHandler = async (
         assertLabRequestClinicAccess(
             existing.request.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const result = await moveLabRequestToExamination(id);
@@ -142,7 +136,7 @@ export const deliverLabRequestHandler = async (
         assertLabRequestClinicAccess(
             existing.request.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const result = await deliverLabRequest(id);
@@ -164,7 +158,7 @@ export const uploadLabReportHandler = async (
         assertLabRequestClinicAccess(
             existing.request.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const report = await uploadLabReport(id, body);
@@ -185,7 +179,7 @@ export const listPatientLabRequestsHandler = async (
         assertPatientClinicAccess(
             patientDetails.patient.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const labRequestRows = await listLabRequestsByPatientId(patientId);

@@ -8,6 +8,7 @@ import {
 } from "./analytics.types";
 import { hasPlatformAdminAccess } from "../auth/auth.constants";
 import { AuthRequest } from "../../middleware/auth.middleware";
+import { appConfig } from "../../config/app.config";
 import { CLINIC_TIMEZONE } from "../scheduling/scheduling.constants";
 import {
     endOfZonedDay,
@@ -57,12 +58,7 @@ export const resolveEffectiveScope = (params: {
     const { req } = params;
     const isPlatformAdmin = hasPlatformAdminAccess(req.employee);
 
-    // Platform admins (Super Admin / Director / Retail Head):
-    // - with clinicId query → that clinic only
-    // - without clinicId → all clinics (do NOT fall back to employee.clinicId)
-    const resolvedClinicId = isPlatformAdmin
-        ? params.clinicId
-        : (req.employee?.clinicId ?? undefined);
+    const resolvedClinicId = appConfig.clinicId;
 
     let resolvedDoctorId = params.doctorId;
 

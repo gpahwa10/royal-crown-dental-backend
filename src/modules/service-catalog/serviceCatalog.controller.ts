@@ -22,13 +22,9 @@ import {
 
 const resolveClinicId = (
     req: AuthRequest,
-    requestedClinicId?: string
+    _requestedClinicId?: string
 ): string | undefined => {
-    if (hasPlatformAdminAccess(req.employee)) {
-        return requestedClinicId ?? req.employee?.clinicId ?? undefined;
-    }
-
-    return req.employee?.clinicId;
+    return req.clinicId;
 };
 
 export const createServiceCatalogHandler = async (
@@ -39,9 +35,7 @@ export const createServiceCatalogHandler = async (
         assertFinancialWriteAccess(req);
         const body = createServiceCatalogSchema.parse(req.body);
 
-        const clinicId = hasPlatformAdminAccess(req.employee)
-            ? body.clinicId
-            : req.employee?.clinicId ?? body.clinicId;
+        const clinicId = req.clinicId;
 
         if (!clinicId) {
             return res.status(400).json({
@@ -95,7 +89,7 @@ export const getServiceCatalogHandler = async (
         assertServiceCatalogClinicAccess(
             service.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         return res.status(200).json({ success: true, data: service });
@@ -117,7 +111,7 @@ export const updateServiceCatalogHandler = async (
         assertServiceCatalogClinicAccess(
             existing.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const service = await updateServiceCatalog(id, body);
@@ -139,7 +133,7 @@ export const deleteServiceCatalogHandler = async (
         assertServiceCatalogClinicAccess(
             existing.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const service = await deleteServiceCatalog(id);

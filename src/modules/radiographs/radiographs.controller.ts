@@ -18,7 +18,7 @@ export const listPatientRadiographsHandler = async (
         assertPatientClinicAccess(
             patientDetails.patient.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const radiographRows = await listRadiographsByPatientId(patientId);

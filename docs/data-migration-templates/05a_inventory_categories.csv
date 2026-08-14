@@ -1,4 +1,0 @@
-category_name,description,parent_category_name,is_active
-Consumables,Disposable clinic consumables,,true
-Medicines,Medicines and pharma stock,Consumables,true
-Instruments,Dental instruments,,true

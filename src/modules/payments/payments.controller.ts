@@ -20,7 +20,7 @@ export const listInvoicePaymentsHandler = async (
         assertInvoiceClinicAccess(
             invoice.invoice.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const paymentRows = await getInvoicePayments(id);
@@ -38,7 +38,7 @@ export const getPaymentHandler = async (req: AuthRequest, res: Response) => {
         assertInvoiceClinicAccess(
             result.invoice.invoice.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         return res.status(200).json({ success: true, data: result });

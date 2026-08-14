@@ -79,7 +79,15 @@ export const requestPasswordReset = async (input: { email: string; note?: string
     return { message: GENERIC_FORGOT_MESSAGE };
 };
 
-export const listPasswordResetRequests = async (status?: PasswordResetRequestStatus) => {
+export const listPasswordResetRequests = async (
+    status?: PasswordResetRequestStatus,
+    clinicId?: string
+) => {
+    const filters = [
+        status ? eq(passwordResetRequests.status, status) : undefined,
+        clinicId ? eq(passwordResetRequests.clinicId, clinicId) : undefined,
+    ].filter(Boolean);
+
     const rows = await db
         .select({
             id: passwordResetRequests.id,
@@ -100,7 +108,7 @@ export const listPasswordResetRequests = async (status?: PasswordResetRequestSta
         .from(passwordResetRequests)
         .leftJoin(employees, eq(employees.id, passwordResetRequests.employeeId))
         .leftJoin(clinics, eq(clinics.id, passwordResetRequests.clinicId))
-        .where(status ? eq(passwordResetRequests.status, status) : sql`true`)
+        .where(filters.length ? and(...filters) : sql`true`)
         .orderBy(desc(passwordResetRequests.createdAt));
 
     return rows;

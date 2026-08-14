@@ -1,6 +1,6 @@
 import { Response } from "express";
 import { AuthRequest } from "../../middleware/auth.middleware";
-import { canAccessAllClinics, hasPlatformAdminAccess } from "../auth/auth.constants";
+import { hasPlatformAdminAccess } from "../auth/auth.constants";
 import {
     assertPatientClinicAccess,
     blacklistPatient,
@@ -29,13 +29,9 @@ import {
 
 const resolveClinicId = (
     req: AuthRequest,
-    requestedClinicId?: string
+    _requestedClinicId?: string
 ): string | undefined => {
-    if (canAccessAllClinics(req.employee)) {
-        return requestedClinicId;
-    }
-
-    return req.employee?.clinicId;
+    return req.clinicId;
 };
 
 export const registerPatientHandler = async (
@@ -45,9 +41,7 @@ export const registerPatientHandler = async (
     try {
         const body = createPatientSchema.parse(req.body);
 
-        const clinicId = hasPlatformAdminAccess(req.employee)
-            ? body.clinicId
-            : req.employee?.clinicId ?? body.clinicId;
+        const clinicId = req.clinicId;
 
         if (!clinicId) {
             return res.status(400).json({
@@ -74,32 +68,8 @@ export const bulkRegisterPatientsHandler = async (
     try {
         const body = bulkCreatePatientsSchema.parse(req.body);
 
-        const forceClinicId = hasPlatformAdminAccess(req.employee)
-            ? undefined
-            : req.employee?.clinicId;
-
-        if (!hasPlatformAdminAccess(req.employee) && !forceClinicId) {
-            return res.status(400).json({
-                success: false,
-                message: "clinicId is required",
-            });
-        }
-
-        if (hasPlatformAdminAccess(req.employee)) {
-            const missingClinic = body.patients.some(
-                (row) => typeof row.clinicId !== "string" || !row.clinicId
-            );
-            if (missingClinic) {
-                return res.status(400).json({
-                    success: false,
-                    message:
-                        "clinicId is required on every patient for platform admin bulk import",
-                });
-            }
-        }
-
         const result = await bulkRegisterPatients(body.patients, {
-            forceClinicId,
+            forceClinicId: req.clinicId,
         });
 
         const status =
@@ -142,10 +112,7 @@ export const listPatientsByClinicHandler = async (
         const { clinicId } = clinicIdParamSchema.parse(req.params);
         const query = patientListQuerySchema.parse(req.query);
 
-        if (
-            !hasPlatformAdminAccess(req.employee) &&
-            req.employee?.clinicId !== clinicId
-        ) {
+        if (clinicId !== req.clinicId) {
             return res.status(403).json({
                 success: false,
                 message: "You cannot access patients from another clinic",
@@ -177,7 +144,7 @@ export const getPatientDetailsHandler = async (
         assertPatientClinicAccess(
             details.patient.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         return res.status(200).json({ success: true, data: details });
@@ -195,7 +162,7 @@ export const updatePatientHandler = async (req: AuthRequest, res: Response) => {
         assertPatientClinicAccess(
             existing.patient.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const result = await updatePatient(id, body);
@@ -217,7 +184,7 @@ export const updatePatientBasicDetailsHandler = async (
         assertPatientClinicAccess(
             existing.patient.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const result = await updatePatientBasicDetails(patientId, body);
@@ -243,7 +210,7 @@ export const updatePatientMedicalProfileHandler = async (
         assertPatientClinicAccess(
             existing.patient.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const result = await updatePatientMedicalProfile(patientId, body);
@@ -269,7 +236,7 @@ export const blacklistPatientHandler = async (
         assertPatientClinicAccess(
             existing.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const patient = await blacklistPatient(

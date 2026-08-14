@@ -16,6 +16,7 @@ router.use(authenticate);
 
 router.get("/list", listClinicsHandler);
 router.get("/", listClinicsHandler);
+router.get("/working-hours", getClinicWorkingHoursHandler);
 router.get("/:id/working-hours", getClinicWorkingHoursHandler);
 router.put("/:id/working-hours", putClinicWorkingHoursHandler);
 router.get("/:id", getClinicHandler);

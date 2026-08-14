@@ -1,3 +1,0 @@
-legacy_employee_id,clinic_code,name,email,phone,designation,roles,timings,is_active,is_blocked,is_suspended,temp_password
-1001,CLN-BLR-01,Dr. Anita Sharma,anita.sharma@yourvcare.com,9876500001,Doctor,"Doctor",09:00-17:00,true,false,false,ChangeMe@123
-1002,CLN-BLR-01,Priya Reception,priya.reception@yourvcare.com,9876500002,Reception,"Reception",09:00-18:00,true,false,false,ChangeMe@123

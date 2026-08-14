@@ -101,13 +101,9 @@ export const generateDentalLabOrderCode = async (executor: DbExecutor = db) => {
 
 export const assertDentalLabOrderClinicAccess = (
     orderClinicId: string,
-    hasPlatformAccess: boolean,
+    _hasPlatformAccess: boolean,
     requesterClinicId?: string | null
 ) => {
-    if (hasPlatformAccess) {
-        return;
-    }
-
     if (!requesterClinicId || orderClinicId !== requesterClinicId) {
         throw new Error(
             "You cannot access dental lab orders from another clinic"

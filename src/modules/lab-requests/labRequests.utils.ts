@@ -98,13 +98,9 @@ export const generateLabRequestCode = async (executor: DbExecutor = db) => {
 
 export const assertLabRequestClinicAccess = (
     labRequestClinicId: string,
-    hasPlatformAccess: boolean,
+    _hasPlatformAccess: boolean,
     requesterClinicId?: string | null
 ) => {
-    if (hasPlatformAccess) {
-        return;
-    }
-
     if (!requesterClinicId || labRequestClinicId !== requesterClinicId) {
         throw new Error("You cannot access lab requests from another clinic");
     }

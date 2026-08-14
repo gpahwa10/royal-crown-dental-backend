@@ -104,13 +104,9 @@ export const generatePatientCode = async (executor: DbExecutor = db) => {
 
 export const assertPatientClinicAccess = (
     patientClinicId: string,
-    hasPlatformAccess: boolean,
+    _hasPlatformAccess: boolean,
     requesterClinicId?: string | null
 ) => {
-    if (hasPlatformAccess) {
-        return;
-    }
-
     if (!requesterClinicId || patientClinicId !== requesterClinicId) {
         throw new Error("You cannot access patients from another clinic");
     }

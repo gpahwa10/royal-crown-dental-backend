@@ -68,7 +68,7 @@ export const updateLeadSchema = z
 
 export const bookLeadAppointmentSchema = z
     .object({
-        clinicId: z.uuid(),
+        clinicId: z.uuid().optional(),
         scheduledAt: z.coerce.date().optional(),
         appointmentDate: z
             .string()

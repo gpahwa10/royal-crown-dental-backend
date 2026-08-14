@@ -1,7 +1,6 @@
 import { Response } from "express";
 import { AuthRequest } from "../../middleware/auth.middleware";
 import {
-    canAccessAllClinics,
     hasPlatformAdminAccess,
     ROLE_ASSISTANT,
     ROLE_DOCTOR,
@@ -46,13 +45,9 @@ import {
 
 const resolveClinicId = (
     req: AuthRequest,
-    requestedClinicId?: string
+    _requestedClinicId?: string
 ): string | undefined => {
-    if (canAccessAllClinics(req.employee)) {
-        return requestedClinicId;
-    }
-
-    return req.employee?.clinicId;
+    return req.clinicId;
 };
 
 const assertClinicVisitWriteAccess = (req: AuthRequest) => {
@@ -95,7 +90,7 @@ const assertVisitAccess = async (
     assertClinicVisitClinicAccess(
         visitClinicId,
         hasPlatformAdminAccess(req.employee),
-        req.employee?.clinicId
+        req.clinicId
     );
 
     if (
@@ -393,7 +388,7 @@ export const listPatientClinicVisitsHandler = async (
         assertPatientClinicAccess(
             patientDetails.patient.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const visits = await listClinicVisitsByPatientId(patientId);

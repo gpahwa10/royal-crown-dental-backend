@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import { clinicContext } from "./middleware/clinic-context";
 import authRoutes from "./modules/auth/auth.routes";
 import employeesRoutes from "./modules/employees/employees.routes";
 import clinicsRoutes from "./modules/clinics/clinics.routes";
@@ -42,6 +43,7 @@ app.use(
 );
 
 app.use(express.json({ limit: "5mb" }));
+app.use(clinicContext);
 app.get('/health', (req, res) => {
     res.send('OK');
 });

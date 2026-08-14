@@ -42,9 +42,7 @@ export const listConsultationPatientsHandler = async (
 
         const query = patientListQuerySchema.parse(req.query);
 
-        const clinicId = hasPlatformAdminAccess(req.employee)
-            ? query.clinicId ?? req.employee?.clinicId ?? undefined
-            : req.employee?.clinicId;
+        const clinicId = req.clinicId;
 
         if (!clinicId) {
             return res.status(400).json({
@@ -74,9 +72,7 @@ export const createConsultationHandler = async (
     try {
         const body = createConsultationSchema.parse(req.body);
 
-        const clinicId = hasPlatformAdminAccess(req.employee)
-            ? body.clinicId
-            : req.employee?.clinicId ?? body.clinicId;
+        const clinicId = req.clinicId;
 
         if (!clinicId) {
             return res.status(400).json({
@@ -107,7 +103,7 @@ export const getConsultationHandler = async (
         assertConsultationClinicAccess(
             result.consultation.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         return res.status(200).json({ success: true, data: result });
@@ -128,7 +124,7 @@ export const updateConsultationHandler = async (
         assertConsultationClinicAccess(
             existing.consultation.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const consultation = await updateConsultation(id, body);
@@ -150,7 +146,7 @@ export const startConsultationHandler = async (
         assertConsultationClinicAccess(
             existing.consultation.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const consultation = await startConsultation(id);
@@ -172,7 +168,7 @@ export const completeConsultationHandler = async (
         assertConsultationClinicAccess(
             existing.consultation.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const consultation = await completeConsultation(id);
@@ -193,7 +189,7 @@ export const listPatientConsultationsHandler = async (
         assertPatientClinicAccess(
             patientDetails.patient.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const items = await listConsultationsByPatientId(patientId);
@@ -215,7 +211,7 @@ export const createConsultationPrescriptionHandler = async (
         assertConsultationClinicAccess(
             existing.consultation.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const prescription = await createPrescriptionForConsultation(id, body);

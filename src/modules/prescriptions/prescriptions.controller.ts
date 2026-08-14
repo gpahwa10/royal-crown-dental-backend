@@ -28,7 +28,7 @@ export const getPrescriptionHandler = async (
         assertPrescriptionClinicAccess(
             clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         return res.status(200).json({ success: true, data: prescription });
@@ -49,7 +49,7 @@ export const updatePrescriptionHandler = async (
         assertPrescriptionClinicAccess(
             clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const prescription = await updatePrescription(id, body);
@@ -70,7 +70,7 @@ export const listPatientPrescriptionsHandler = async (
         assertPatientClinicAccess(
             patientDetails.patient.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const prescriptions = await listPrescriptionsByPatientId(patientId);

@@ -26,22 +26,16 @@ import {
 
 const resolveClinicId = (
     req: AuthRequest,
-    requestedClinicId?: string
+    _requestedClinicId?: string
 ): string | undefined => {
-    if (hasPlatformAdminAccess(req.employee)) {
-        return requestedClinicId ?? req.employee?.clinicId ?? undefined;
-    }
-
-    return req.employee?.clinicId;
+    return req.clinicId;
 };
 
 export const createLeadHandler = async (req: AuthRequest, res: Response) => {
     try {
         const body = createLeadSchema.parse(req.body);
 
-        const clinicId = hasPlatformAdminAccess(req.employee)
-            ? body.clinicId
-            : req.employee?.clinicId ?? body.clinicId;
+        const clinicId = req.clinicId;
 
         if (!clinicId) {
             return res.status(400).json({
@@ -98,7 +92,7 @@ export const getLeadByIdHandler = async (req: AuthRequest, res: Response) => {
         assertLeadClinicAccess(
             lead.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         return res.status(200).json({ success: true, data: lead });
@@ -119,7 +113,7 @@ export const updateLeadStatusHandler = async (
         assertLeadClinicAccess(
             existing.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const lead = await updateLeadStatus(id, body.status);
@@ -138,13 +132,13 @@ export const updateLeadHandler = async (req: AuthRequest, res: Response) => {
         assertLeadClinicAccess(
             existing.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         if (
             body.clinicId &&
             !hasPlatformAdminAccess(req.employee) &&
-            body.clinicId !== req.employee?.clinicId
+            body.clinicId !== req.clinicId
         ) {
             return res.status(403).json({
                 success: false,
@@ -171,7 +165,7 @@ export const bookLeadAppointmentHandler = async (
         assertLeadClinicAccess(
             existing.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const lead = await bookLeadAppointment(id, body);
@@ -193,7 +187,7 @@ export const convertLeadToPatientHandler = async (
         assertLeadClinicAccess(
             existing.clinicId,
             hasPlatformAdminAccess(req.employee),
-            req.employee?.clinicId
+            req.clinicId
         );
 
         const lead = await convertLeadToPatient(id, body.patientId);

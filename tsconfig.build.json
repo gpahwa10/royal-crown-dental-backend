@@ -5,5 +5,5 @@
         "moduleResolution": "node"
     },
     "include": ["src/**/*.ts"],
-    "exclude": ["src/scripts", "src/scripts/**"]
+    "exclude": ["src/scripts", "src/scripts/**", "src/**/*.test.ts"]
 }
