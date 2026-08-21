@@ -32,9 +32,7 @@ app.use(
     cors({
         origin: [
           "http://localhost:5173",
-          "https://dental-clinic-dashboard-delta.vercel.app",
           "https://royal-crown-dental-clinic-web.vercel.app",
-          "https://dashboard.yourvcare.com"
         ],
         allowedHeaders: ["Content-Type", "Authorization"],
         methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],

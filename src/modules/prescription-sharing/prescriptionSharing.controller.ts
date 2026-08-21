@@ -33,15 +33,23 @@ export const uploadPrescriptionHandler = async (
             });
         }
 
+        const clinicId = fields.clinicId ?? req.clinicId;
+        if (!clinicId) {
+            return res.status(400).json({
+                success: false,
+                message: "clinicId is required",
+            });
+        }
+
         assertPrescriptionClinicAccess(
-            fields.clinicId,
+            clinicId,
             hasPlatformAdminAccess(req.employee),
             req.clinicId
         );
 
         const result = await uploadPrescriptionPdf({
             file,
-            clinicId: fields.clinicId,
+            clinicId,
             patientId: fields.patientId,
             prescriptionId: fields.prescriptionId,
             uploadedBy: req.employee?.isSuperAdmin

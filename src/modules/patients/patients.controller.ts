@@ -50,9 +50,17 @@ export const registerPatientHandler = async (
             });
         }
 
+        if (!body.phone) {
+            return res.status(400).json({
+                success: false,
+                message: "phone is required",
+            });
+        }
+
         const result = await registerPatient({
             ...body,
             clinicId,
+            phone: body.phone,
         });
 
         return res.status(201).json({ success: true, data: result });

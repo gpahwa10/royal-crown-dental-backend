@@ -59,7 +59,6 @@ export const calculateInvoiceLines = (
     const serviceById = new Map(services.map((service) => [service.serviceId, service]));
     const calculatedLines: CalculatedInvoiceLine[] = [];
     let membershipDiscountTotal = 0;
-    let subtotalBeforeTax = 0;
     let taxAmountTotal = 0;
 
     for (const item of items) {
@@ -68,10 +67,7 @@ export const calculateInvoiceLines = (
             throw new Error("Service not found");
         }
 
-        if (!service.isTaxable && service.taxPercentage > 0) {
-            throw new Error("Invalid discount configuration");
-        }
-
+        const taxPercentage = service.isTaxable ? service.taxPercentage : 0;
         const gross = service.unitPrice * item.quantity;
         const membershipDiscount = applyMembershipDiscount(
             gross,
@@ -80,12 +76,9 @@ export const calculateInvoiceLines = (
         membershipDiscountTotal += membershipDiscount;
 
         const netBeforeTax = Math.max(0, gross - membershipDiscount);
-        const taxAmount = service.isTaxable
-            ? Math.round((netBeforeTax * service.taxPercentage) / 100)
-            : 0;
+        const taxAmount = Math.round((netBeforeTax * taxPercentage) / 100);
         const lineTotal = netBeforeTax + taxAmount;
 
-        subtotalBeforeTax += netBeforeTax;
         taxAmountTotal += taxAmount;
 
         calculatedLines.push({
@@ -94,7 +87,7 @@ export const calculateInvoiceLines = (
             quantity: item.quantity,
             unitPrice: service.unitPrice,
             discountAmount: membershipDiscount,
-            taxPercentage: service.taxPercentage,
+            taxPercentage,
             taxAmount,
             lineTotal,
         });
