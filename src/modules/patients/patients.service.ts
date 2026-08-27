@@ -417,7 +417,19 @@ export const bulkRegisterPatients = async (
             continue;
         }
 
-        const phoneKey = `${parsed.data.clinicId}:${parsed.data.phone}`;
+        if (!parsed.data.clinicId || !parsed.data.phone) {
+            failed.push({
+                index,
+                name: parsed.data.name,
+                phone: parsed.data.phone,
+                message: "clinicId and phone are required",
+            });
+            continue;
+        }
+
+        const clinicId = parsed.data.clinicId;
+        const phone = parsed.data.phone;
+        const phoneKey = `${clinicId}:${phone}`;
         const alreadySeen = seenPhones.get(phoneKey);
         if (alreadySeen) {
             created.push({
@@ -428,10 +440,7 @@ export const bulkRegisterPatients = async (
         }
 
         try {
-            const existing = await findPatientByPhoneInClinic(
-                parsed.data.phone,
-                parsed.data.clinicId
-            );
+            const existing = await findPatientByPhoneInClinic(phone, clinicId);
 
             if (existing) {
                 const success: BulkRegisterPatientSuccess = {
@@ -448,7 +457,11 @@ export const bulkRegisterPatients = async (
 
             let result;
             try {
-                result = await registerPatient(parsed.data);
+                result = await registerPatient({
+                    ...parsed.data,
+                    clinicId,
+                    phone,
+                });
             } catch (error) {
                 // Email uniqueness is global — retry without email so phone-first migration can proceed.
                 if (
@@ -458,6 +471,8 @@ export const bulkRegisterPatients = async (
                 ) {
                     result = await registerPatient({
                         ...parsed.data,
+                        clinicId,
+                        phone,
                         email: undefined,
                     });
                 } else {

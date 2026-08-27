@@ -168,7 +168,15 @@ export const bookLeadAppointmentHandler = async (
             req.clinicId
         );
 
-        const lead = await bookLeadAppointment(id, body);
+        const clinicId = body.clinicId ?? req.clinicId ?? existing.clinicId;
+        if (!clinicId) {
+            return res.status(400).json({
+                success: false,
+                message: "clinicId is required",
+            });
+        }
+
+        const lead = await bookLeadAppointment(id, { ...body, clinicId });
         return res.status(200).json({ success: true, data: lead });
     } catch (error) {
         return handleError(res, error);
