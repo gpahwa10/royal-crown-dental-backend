@@ -16,9 +16,9 @@ export const createServiceCatalogSchema = z.object({
     serviceName: z.string().trim().min(1),
     description: z.string().trim().optional(),
     category: z.string().trim().optional(),
-    defaultPrice: z.coerce.number().int().min(0),
-    taxPercentage: z.coerce.number().int().min(0).max(100).default(0),
-    isTaxable: z.boolean().default(true),
+    defaultPrice: z.coerce.number().int().min(0).optional().default(0),
+    taxPercentage: z.coerce.number().int().min(0).max(100).optional().default(0),
+    isTaxable: z.boolean().optional().default(false),
 });
 
 export const updateServiceCatalogSchema = z

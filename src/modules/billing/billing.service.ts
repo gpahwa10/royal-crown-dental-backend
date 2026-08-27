@@ -262,7 +262,7 @@ const calculateInvoiceFromCatalog = async (input: {
             serviceId: service.id,
             serviceCode: service.serviceCode,
             serviceName: service.serviceName,
-            unitPrice: service.defaultPrice,
+            unitPrice: service.defaultPrice ?? 0,
             taxPercentage: service.taxPercentage,
             isTaxable: service.isTaxable,
         })),

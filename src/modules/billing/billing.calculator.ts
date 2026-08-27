@@ -3,6 +3,7 @@ import { MembershipDiscountType } from "../membership/membership.constants";
 export type InvoiceLineInput = {
     serviceId: string;
     quantity: number;
+    unitPrice?: number;
 };
 
 export type ServicePriceSnapshot = {
@@ -72,7 +73,9 @@ export const calculateInvoiceLines = (
             throw new Error("Invalid discount configuration");
         }
 
-        const gross = service.unitPrice * item.quantity;
+        const effectiveUnitPrice =
+            item.unitPrice !== undefined ? item.unitPrice : service.unitPrice;
+        const gross = effectiveUnitPrice * item.quantity;
         const membershipDiscount = applyMembershipDiscount(
             gross,
             benefitsByServiceCode.get(service.serviceCode)
@@ -92,7 +95,7 @@ export const calculateInvoiceLines = (
             serviceId: service.serviceId,
             serviceName: service.serviceName,
             quantity: item.quantity,
-            unitPrice: service.unitPrice,
+            unitPrice: effectiveUnitPrice,
             discountAmount: membershipDiscount,
             taxPercentage: service.taxPercentage,
             taxAmount,

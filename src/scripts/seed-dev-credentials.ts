@@ -173,7 +173,7 @@ const main = async () => {
     const clinicMap = await seedClinics([
         {
             legacyClinicId: 1,
-            clinicName: "Royal Crown Dental Clinic",
+            clinicName: "Royal Crown Dental Care",
             clinicCode: "CLINIC-001-ROYAL-CROWN-DENTAL-CLINIC",
             email: "superadmin@royalcrown.com",
             phone: null,
@@ -196,7 +196,7 @@ const main = async () => {
     await seedDoctor(clinicId);
 
     console.log("\n--- Dev credentials ---");
-    console.log("Clinic: Royal Crown Dental Clinic");
+    console.log("Clinic: Royal Crown Dental Care");
     console.log(`Clinic ID (set CLINIC_ID in .env): ${clinicId}`);
     console.log(`Hours:   ${CLINIC_OPEN_TIME}–${CLINIC_CLOSE_TIME} every day`);
     console.log("\nSuper Admin (super_admins table)");

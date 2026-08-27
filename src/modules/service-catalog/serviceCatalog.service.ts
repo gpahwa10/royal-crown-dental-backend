@@ -18,7 +18,7 @@ export interface CreateServiceCatalogInput {
     serviceName: string;
     description?: string;
     category?: string;
-    defaultPrice: number;
+    defaultPrice?: number;
     taxPercentage?: number;
     isTaxable?: boolean;
 }
@@ -90,9 +90,9 @@ export const createServiceCatalog = async (input: CreateServiceCatalogInput) => 
                 serviceName: input.serviceName,
                 description: input.description,
                 category: input.category,
-                defaultPrice: input.defaultPrice,
+                defaultPrice: input.defaultPrice ?? 0,
                 taxPercentage: input.taxPercentage ?? 0,
-                isTaxable: input.isTaxable ?? true,
+                isTaxable: input.isTaxable ?? false,
                 clinicId: input.clinicId,
                 createdAt: now,
                 updatedAt: now,
