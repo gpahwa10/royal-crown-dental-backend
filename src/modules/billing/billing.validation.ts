@@ -13,11 +13,26 @@ export const patientIdParamSchema = z.object({
     patientId: z.uuid(),
 });
 
-export const invoiceLineItemSchema = z.object({
-    serviceId: z.uuid(),
-    quantity: z.coerce.number().int().min(1),
-    unitPrice: z.coerce.number().int().min(0).optional(),
-});
+export const invoiceLineItemSchema = z
+    .object({
+        serviceId: z.uuid(),
+        quantity: z.coerce.number().int().min(1),
+        unitPrice: z.coerce.number().min(0).optional(),
+        price: z.coerce.number().min(0).optional(),
+        unit_price: z.coerce.number().min(0).optional(),
+    })
+    .transform((data) => ({
+        serviceId: data.serviceId,
+        quantity: data.quantity,
+        unitPrice:
+            data.unitPrice !== undefined
+                ? Math.round(data.unitPrice)
+                : data.price !== undefined
+                ? Math.round(data.price)
+                : data.unit_price !== undefined
+                ? Math.round(data.unit_price)
+                : undefined,
+    }));
 
 export const createInvoiceSchema = z.object({
     patientId: z.uuid(),
