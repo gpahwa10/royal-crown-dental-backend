@@ -290,9 +290,6 @@ const findOrCreateMembershipService = async (
             serviceCode: "MEMBERSHIP",
             serviceName: `Membership - ${planName}`,
             category: "Membership",
-            defaultPrice: price,
-            taxPercentage: 0,
-            isTaxable: false,
             clinicId,
             createdAt: now,
             updatedAt: now,
@@ -326,7 +323,7 @@ export const purchasePatientMembership = async (
         clinicId,
         sourceType: "membership",
         sourceId: plan.id,
-        items: [{ serviceId: membershipService.id, quantity: 1 }],
+        items: [{ serviceId: membershipService.id, quantity: 1, unitPrice: plan.price }],
         generatedBy: input.purchasedBy,
         skipMembershipDiscount: true,
     });

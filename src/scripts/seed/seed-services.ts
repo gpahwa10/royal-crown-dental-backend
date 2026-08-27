@@ -122,9 +122,6 @@ export const seedServices = async (
             await db.insert(serviceCatalog).values({
                 serviceCode,
                 serviceName: service.serviceName,
-                defaultPrice: service.defaultPrice,
-                taxPercentage: 0,
-                isTaxable: false,
                 isActive: true,
                 clinicId: clinic.id,
                 createdAt: now,

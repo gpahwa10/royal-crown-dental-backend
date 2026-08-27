@@ -68,10 +68,6 @@ export const calculateInvoiceLines = (
             throw new Error("Service not found");
         }
 
-        if (!service.isTaxable && service.taxPercentage > 0) {
-            throw new Error("Invalid discount configuration");
-        }
-
         const effectiveUnitPrice =
             item.unitPrice !== undefined ? item.unitPrice : service.unitPrice;
         const gross = effectiveUnitPrice * item.quantity;
@@ -82,7 +78,9 @@ export const calculateInvoiceLines = (
         membershipDiscountTotal += membershipDiscount;
 
         const netBeforeTax = Math.max(0, gross - membershipDiscount);
-        const taxAmount = Math.round((netBeforeTax * taxPercentage) / 100);
+        const taxAmount = service.isTaxable
+            ? Math.round((netBeforeTax * service.taxPercentage) / 100)
+            : 0;
         const lineTotal = netBeforeTax + taxAmount;
 
         taxAmountTotal += taxAmount;
@@ -93,7 +91,7 @@ export const calculateInvoiceLines = (
             quantity: item.quantity,
             unitPrice: effectiveUnitPrice,
             discountAmount: membershipDiscount,
-            taxPercentage,
+            taxPercentage: service.taxPercentage,
             taxAmount,
             lineTotal,
         });

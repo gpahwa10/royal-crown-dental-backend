@@ -18,9 +18,6 @@ export interface CreateServiceCatalogInput {
     serviceName: string;
     description?: string;
     category?: string;
-    defaultPrice?: number;
-    taxPercentage?: number;
-    isTaxable?: boolean;
 }
 
 export interface UpdateServiceCatalogInput {
@@ -28,9 +25,6 @@ export interface UpdateServiceCatalogInput {
     serviceName?: string;
     description?: string | null;
     category?: string | null;
-    defaultPrice?: number;
-    taxPercentage?: number;
-    isTaxable?: boolean;
     isActive?: boolean;
 }
 
@@ -45,18 +39,24 @@ export interface ListServiceCatalogOptions {
 
 export type ServiceCatalogRow = typeof serviceCatalog.$inferSelect;
 
+export interface ServiceCatalogListResult {
+    data: ServiceCatalogRow[];
+    pagination: {
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+    };
+}
+
 const assertClinicExists = async (clinicId: string) => {
     const [clinic] = await db
-        .select({ id: clinics.id, isActive: clinics.isActive })
+        .select({ id: clinics.id })
         .from(clinics)
         .where(eq(clinics.id, clinicId));
 
     if (!clinic) {
         throw new Error("Clinic not found");
-    }
-
-    if (!clinic.isActive) {
-        throw new Error("Clinic is not active");
     }
 };
 
@@ -90,9 +90,6 @@ export const createServiceCatalog = async (input: CreateServiceCatalogInput) => 
                 serviceName: input.serviceName,
                 description: input.description,
                 category: input.category,
-                defaultPrice: input.defaultPrice ?? 0,
-                taxPercentage: input.taxPercentage ?? 0,
-                isTaxable: input.isTaxable ?? false,
                 clinicId: input.clinicId,
                 createdAt: now,
                 updatedAt: now,
