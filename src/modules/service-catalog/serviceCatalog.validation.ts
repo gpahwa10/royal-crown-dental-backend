@@ -16,10 +16,6 @@ export const createServiceCatalogSchema = z.object({
     serviceName: z.string().trim().min(1),
     description: z.string().trim().optional(),
     category: z.string().trim().optional(),
-    defaultPrice: z.coerce.number().min(0).optional(),
-    price: z.coerce.number().min(0).optional(),
-    taxPercentage: z.coerce.number().min(0).max(100).optional(),
-    isTaxable: z.boolean().optional(),
 });
 
 export const updateServiceCatalogSchema = z
@@ -34,10 +30,6 @@ export const updateServiceCatalogSchema = z
         serviceName: z.string().trim().min(1).optional(),
         description: z.string().trim().nullable().optional(),
         category: z.string().trim().nullable().optional(),
-        defaultPrice: z.coerce.number().min(0).optional(),
-        price: z.coerce.number().min(0).optional(),
-        taxPercentage: z.coerce.number().min(0).max(100).optional(),
-        isTaxable: z.boolean().optional(),
         isActive: z.boolean().optional(),
     })
     .refine((data) => Object.keys(data).length > 0, {

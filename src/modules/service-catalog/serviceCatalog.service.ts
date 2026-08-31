@@ -18,10 +18,6 @@ export interface CreateServiceCatalogInput {
     serviceName: string;
     description?: string;
     category?: string;
-    defaultPrice?: number;
-    price?: number;
-    taxPercentage?: number;
-    isTaxable?: boolean;
 }
 
 export interface UpdateServiceCatalogInput {
@@ -29,10 +25,6 @@ export interface UpdateServiceCatalogInput {
     serviceName?: string;
     description?: string | null;
     category?: string | null;
-    defaultPrice?: number;
-    price?: number;
-    taxPercentage?: number;
-    isTaxable?: boolean;
     isActive?: boolean;
 }
 
@@ -98,9 +90,6 @@ export const createServiceCatalog = async (input: CreateServiceCatalogInput) => 
                 serviceName: input.serviceName,
                 description: input.description,
                 category: input.category,
-                defaultPrice: input.defaultPrice ?? input.price ?? 0,
-                taxPercentage: input.taxPercentage ?? 0,
-                isTaxable: input.isTaxable ?? false,
                 clinicId: input.clinicId,
                 createdAt: now,
                 updatedAt: now,
@@ -182,10 +171,6 @@ export const updateServiceCatalog = async (
     if (input.serviceName !== undefined) updateValues.serviceName = input.serviceName;
     if (input.description !== undefined) updateValues.description = input.description;
     if (input.category !== undefined) updateValues.category = input.category;
-    if (input.defaultPrice !== undefined) updateValues.defaultPrice = input.defaultPrice;
-    else if (input.price !== undefined) updateValues.defaultPrice = input.price;
-    if (input.taxPercentage !== undefined) updateValues.taxPercentage = input.taxPercentage;
-    if (input.isTaxable !== undefined) updateValues.isTaxable = input.isTaxable;
     if (input.isActive !== undefined) updateValues.isActive = input.isActive;
     updateValues.updatedAt = new Date();
 
