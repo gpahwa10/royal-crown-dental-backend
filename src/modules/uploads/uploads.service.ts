@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { and, count, desc, eq } from "drizzle-orm";
 import { s3Config } from "../../config/s3.config";
 import { db } from "../../db/client";
@@ -55,15 +56,23 @@ export type FileWithDownloadUrl = {
     expiresIn: number | null;
 };
 
+const UUID_REGEX =
+    /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
+
 const resolveUploadedByEmployeeId = async (uploadedBy?: string) => {
-    if (!uploadedBy) {
+    if (!uploadedBy || typeof uploadedBy !== "string" || !uploadedBy.trim()) {
+        return null;
+    }
+
+    const trimmed = uploadedBy.trim();
+    if (!UUID_REGEX.test(trimmed)) {
         return null;
     }
 
     const [employee] = await db
         .select({ id: employees.id })
         .from(employees)
-        .where(eq(employees.id, uploadedBy));
+        .where(eq(employees.id, trimmed));
 
     return employee?.id ?? null;
 };
@@ -106,15 +115,24 @@ export const presignUpload = async (input: PresignUploadInput) => {
     const now = new Date();
     const bucket = s3Config.bucket;
     const uploadedBy = await resolveUploadedByEmployeeId(input.uploadedBy);
+    const fileId = randomUUID();
+    const objectKey = buildObjectKey({
+        clinicId: patient.clinicId,
+        patientId: patient.id,
+        documentType: input.documentType,
+        fileId,
+        originalFileName: input.fileName,
+    });
 
     const [file] = await db
         .insert(files)
         .values({
+            id: fileId,
             patientId: patient.id,
             clinicId: patient.clinicId,
             documentType: input.documentType,
             originalFileName: input.fileName,
-            objectKey: "pending",
+            objectKey,
             bucket,
             contentType: input.contentType,
             fileSize: input.fileSize ?? null,
@@ -125,23 +143,6 @@ export const presignUpload = async (input: PresignUploadInput) => {
         })
         .returning();
 
-    const objectKey = buildObjectKey({
-        clinicId: patient.clinicId,
-        patientId: patient.id,
-        documentType: input.documentType,
-        fileId: file.id,
-        originalFileName: input.fileName,
-    });
-
-    const [updatedFile] = await db
-        .update(files)
-        .set({
-            objectKey,
-            updatedAt: new Date(),
-        })
-        .where(eq(files.id, file.id))
-        .returning();
-
     const { uploadUrl, expiresIn } = await createUploadPresignedUrl({
         bucket,
         objectKey,
@@ -149,7 +150,7 @@ export const presignUpload = async (input: PresignUploadInput) => {
     });
 
     return {
-        file: updatedFile,
+        file,
         uploadUrl,
         expiresIn,
         headers: {
@@ -308,30 +309,12 @@ export const uploadServerGeneratedFile = async (input: {
     const bucket = s3Config.bucket;
     const now = new Date();
     const uploadedBy = await resolveUploadedByEmployeeId(input.uploadedBy);
-
-    const [file] = await db
-        .insert(files)
-        .values({
-            patientId: input.patientId,
-            clinicId: input.clinicId,
-            documentType: input.documentType,
-            originalFileName: input.fileName,
-            objectKey: "pending",
-            bucket,
-            contentType: input.contentType,
-            fileSize: input.buffer.length,
-            status: "pending_upload",
-            uploadedBy,
-            createdAt: now,
-            updatedAt: now,
-        })
-        .returning();
-
+    const fileId = randomUUID();
     const objectKey = buildObjectKey({
         clinicId: input.clinicId,
         patientId: input.patientId,
         documentType: input.documentType,
-        fileId: file.id,
+        fileId,
         originalFileName: input.fileName,
     });
 
@@ -342,16 +325,24 @@ export const uploadServerGeneratedFile = async (input: {
         body: input.buffer,
     });
 
-    const [updatedFile] = await db
-        .update(files)
-        .set({
+    const [file] = await db
+        .insert(files)
+        .values({
+            id: fileId,
+            patientId: input.patientId,
+            clinicId: input.clinicId,
+            documentType: input.documentType,
+            originalFileName: input.fileName,
             objectKey,
-            status: "uploaded",
+            bucket,
+            contentType: input.contentType,
             fileSize: input.buffer.length,
-            updatedAt: new Date(),
+            status: "uploaded",
+            uploadedBy,
+            createdAt: now,
+            updatedAt: now,
         })
-        .where(eq(files.id, file.id))
         .returning();
 
-    return updatedFile;
+    return file;
 };

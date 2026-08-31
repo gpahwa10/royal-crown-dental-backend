@@ -4,7 +4,9 @@ export type InvoiceLineInput = {
     serviceId?: string;
     serviceName?: string;
     quantity: number;
-    unitPrice: number;
+    unitPrice?: number;
+    price?: number;
+    discountAmount?: number;
     taxPercentage?: number;
 };
 
@@ -61,6 +63,7 @@ export const calculateInvoiceLines = (
     const serviceById = new Map(services.map((service) => [service.serviceId, service]));
     const calculatedLines: CalculatedInvoiceLine[] = [];
     let membershipDiscountTotal = 0;
+    let itemManualDiscountTotal = 0;
     let taxAmountTotal = 0;
 
     for (const item of items) {
@@ -70,7 +73,7 @@ export const calculateInvoiceLines = (
         }
 
         const serviceName = item.serviceName ?? service?.serviceName ?? "Dental Service";
-        const effectiveUnitPrice = item.unitPrice ?? 0;
+        const effectiveUnitPrice = item.unitPrice ?? item.price ?? 0;
         const gross = effectiveUnitPrice * item.quantity;
         const membershipDiscount = service
             ? applyMembershipDiscount(
@@ -80,7 +83,15 @@ export const calculateInvoiceLines = (
             : 0;
         membershipDiscountTotal += membershipDiscount;
 
-        const netBeforeTax = Math.max(0, gross - membershipDiscount);
+        const netAfterMembership = Math.max(0, gross - membershipDiscount);
+        const itemManualDiscount = Math.min(
+            netAfterMembership,
+            item.discountAmount ?? 0
+        );
+        itemManualDiscountTotal += itemManualDiscount;
+
+        const totalLineDiscount = membershipDiscount + itemManualDiscount;
+        const netBeforeTax = Math.max(0, gross - totalLineDiscount);
         const taxPercentage = item.taxPercentage ?? 0;
         const taxAmount =
             taxPercentage > 0
@@ -95,7 +106,7 @@ export const calculateInvoiceLines = (
             serviceName,
             quantity: item.quantity,
             unitPrice: effectiveUnitPrice,
-            discountAmount: membershipDiscount,
+            discountAmount: totalLineDiscount,
             taxPercentage,
             taxAmount,
             lineTotal,
@@ -117,7 +128,7 @@ export const calculateInvoiceLines = (
         lines: calculatedLines,
         subtotal,
         membershipDiscount: membershipDiscountTotal,
-        manualDiscount: appliedManualDiscount,
+        manualDiscount: appliedManualDiscount + itemManualDiscountTotal,
         taxAmount: taxAmountTotal,
         grandTotal,
     };
