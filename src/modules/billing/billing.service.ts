@@ -244,19 +244,19 @@ const calculateInvoiceFromCatalog = async (input: {
     const services =
         uniqueServiceIds.length > 0
             ? await db
-                  .select({
-                      id: serviceCatalog.id,
-                      serviceCode: serviceCatalog.serviceCode,
-                      serviceName: serviceCatalog.serviceName,
-                  })
-                  .from(serviceCatalog)
-                  .where(
-                      and(
-                          inArray(serviceCatalog.id, uniqueServiceIds),
-                          eq(serviceCatalog.clinicId, input.clinicId),
-                          eq(serviceCatalog.isActive, true)
-                      )
-                  )
+                .select({
+                    id: serviceCatalog.id,
+                    serviceCode: serviceCatalog.serviceCode,
+                    serviceName: serviceCatalog.serviceName,
+                })
+                .from(serviceCatalog)
+                .where(
+                    and(
+                        inArray(serviceCatalog.id, uniqueServiceIds),
+                        eq(serviceCatalog.clinicId, input.clinicId),
+                        eq(serviceCatalog.isActive, true)
+                    )
+                )
             : [];
 
     if (services.length !== uniqueServiceIds.length) {
