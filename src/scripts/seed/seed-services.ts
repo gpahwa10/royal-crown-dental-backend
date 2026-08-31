@@ -13,19 +13,10 @@ const CSV_PATH = join(
 
 export type ServiceSeedRow = {
     serviceName: string;
-    defaultPrice: number;
 };
 
 const normalizeNameKey = (name: string) =>
     name.trim().toLowerCase().replace(/\s+/g, " ");
-
-const parsePrice = (raw: string): number | null => {
-    const cleaned = raw.replace(/[^\d.]/g, "").trim();
-    if (!cleaned) return null;
-    const value = Number.parseInt(cleaned, 10);
-    if (Number.isNaN(value) || value < 0) return null;
-    return value;
-};
 
 /** Load unique services from SER.csv (first occurrence wins; duplicates skipped). */
 export const loadServicesFromCsv = (
@@ -41,9 +32,8 @@ export const loadServicesFromCsv = (
 
         const cols = line.split(",");
         const name = (cols[0] ?? "").trim();
-        const priceRaw = (cols[1] ?? "").trim();
 
-        if (!name || !priceRaw) continue;
+        if (!name) continue;
 
         const headerKey = normalizeNameKey(name);
         if (
@@ -54,9 +44,6 @@ export const loadServicesFromCsv = (
             continue;
         }
 
-        const price = parsePrice(priceRaw);
-        if (price === null) continue;
-
         const key = normalizeNameKey(name);
         if (seen.has(key)) {
             console.warn(`Skipping duplicate CSV row: "${name}"`);
@@ -66,7 +53,6 @@ export const loadServicesFromCsv = (
 
         rows.push({
             serviceName: name.trim(),
-            defaultPrice: price,
         });
     }
 

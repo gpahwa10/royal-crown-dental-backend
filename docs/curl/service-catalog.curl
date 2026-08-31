@@ -51,10 +51,7 @@ curl -X POST "${BASE_URL}/api/auth/login" \
 #   "serviceCode": "CONSULTATION",
 #   "serviceName": "General Consultation",
 #   "description": "Initial dental consultation",
-#   "category": "clinical",
-#   "defaultPrice": 500,
-#   "taxPercentage": 18,
-#   "isTaxable": true
+#   "category": "clinical"
 # }
 #
 # serviceCode is optional — auto-generated if omitted (e.g. SVC000001).
@@ -69,9 +66,6 @@ curl -X POST "${BASE_URL}/api/auth/login" \
 #     "serviceName": "General Consultation",
 #     "description": "Initial dental consultation",
 #     "category": "clinical",
-#     "defaultPrice": 500,
-#     "taxPercentage": 18,
-#     "isTaxable": true,
 #     "isActive": true,
 #     "clinicId": "<uuid>",
 #     "createdAt": "2026-06-07T10:00:00.000Z",
@@ -87,10 +81,7 @@ curl -X POST "${SERVICES}" \
     "serviceCode": "CONSULTATION",
     "serviceName": "General Consultation",
     "description": "Initial dental consultation",
-    "category": "clinical",
-    "defaultPrice": 500,
-    "taxPercentage": 18,
-    "isTaxable": true
+    "category": "clinical"
   }'
 
 
@@ -103,10 +94,7 @@ curl -X POST "${SERVICES}" \
     "clinicId": "'"${CLINIC_ID}"'",
     "serviceCode": "RCT",
     "serviceName": "Root Canal Treatment",
-    "category": "clinical",
-    "defaultPrice": 8000,
-    "taxPercentage": 18,
-    "isTaxable": true
+    "category": "clinical"
   }'
 
 curl -X POST "${SERVICES}" \
@@ -116,10 +104,7 @@ curl -X POST "${SERVICES}" \
     "clinicId": "'"${CLINIC_ID}"'",
     "serviceCode": "XRAY",
     "serviceName": "Dental Radiograph",
-    "category": "diagnostic",
-    "defaultPrice": 300,
-    "taxPercentage": 18,
-    "isTaxable": true
+    "category": "diagnostic"
   }'
 
 curl -X POST "${SERVICES}" \
@@ -129,10 +114,7 @@ curl -X POST "${SERVICES}" \
     "clinicId": "'"${CLINIC_ID}"'",
     "serviceCode": "DENTAL_LAB",
     "serviceName": "Dental Lab Prosthetic",
-    "category": "lab",
-    "defaultPrice": 12000,
-    "taxPercentage": 18,
-    "isTaxable": true
+    "category": "lab"
   }'
 
 curl -X POST "${SERVICES}" \
@@ -142,10 +124,7 @@ curl -X POST "${SERVICES}" \
     "clinicId": "'"${CLINIC_ID}"'",
     "serviceCode": "MEMBERSHIP",
     "serviceName": "Membership Plan",
-    "category": "membership",
-    "defaultPrice": 0,
-    "taxPercentage": 0,
-    "isTaxable": false
+    "category": "membership"
   }'
 
 
@@ -189,8 +168,8 @@ curl -X GET "${SERVICES}/${SERVICE_ID}" \
 #
 # Request:
 # {
-#   "defaultPrice": 600,
-#   "taxPercentage": 18,
+#   "serviceName": "Consultation",
+#   "description": "Updated consultation fee",
 #   "isActive": true
 # }
 #
@@ -201,8 +180,7 @@ curl -X PATCH "${SERVICES}/${SERVICE_ID}" \
   -H "${AUTH_HEADER}" \
   -H "${JSON_HEADER}" \
   -d '{
-    "defaultPrice": 600,
-    "description": "Updated consultation fee"
+    "description": "Updated consultation description"
   }'
 
 

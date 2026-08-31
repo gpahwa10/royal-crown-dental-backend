@@ -3,17 +3,17 @@ import { MembershipDiscountType } from "../membership/membership.constants";
 export type InvoiceLineInput = {
     serviceId: string;
     quantity: number;
-    unitPrice?: number;
+    unitPrice: number;
+    taxPercentage?: number;
 };
 
-export type ServicePriceSnapshot = {
+export type ServiceCatalogSnapshot = {
     serviceId: string;
     serviceCode: string;
     serviceName: string;
-    unitPrice: number;
-    taxPercentage: number;
-    isTaxable: boolean;
 };
+
+export type ServicePriceSnapshot = ServiceCatalogSnapshot;
 
 export type MembershipBenefitSnapshot = {
     serviceCode: string;
@@ -53,7 +53,7 @@ export const applyMembershipDiscount = (
 
 export const calculateInvoiceLines = (
     items: InvoiceLineInput[],
-    services: ServicePriceSnapshot[],
+    services: ServiceCatalogSnapshot[],
     benefitsByServiceCode: Map<string, MembershipBenefitSnapshot>,
     manualDiscount: number
 ) => {
@@ -68,8 +68,7 @@ export const calculateInvoiceLines = (
             throw new Error("Service not found");
         }
 
-        const effectiveUnitPrice =
-            item.unitPrice !== undefined ? item.unitPrice : service.unitPrice;
+        const effectiveUnitPrice = item.unitPrice ?? 0;
         const gross = effectiveUnitPrice * item.quantity;
         const membershipDiscount = applyMembershipDiscount(
             gross,
@@ -78,9 +77,11 @@ export const calculateInvoiceLines = (
         membershipDiscountTotal += membershipDiscount;
 
         const netBeforeTax = Math.max(0, gross - membershipDiscount);
-        const taxAmount = service.isTaxable
-            ? Math.round((netBeforeTax * service.taxPercentage) / 100)
-            : 0;
+        const taxPercentage = item.taxPercentage ?? 0;
+        const taxAmount =
+            taxPercentage > 0
+                ? Math.round((netBeforeTax * taxPercentage) / 100)
+                : 0;
         const lineTotal = netBeforeTax + taxAmount;
 
         taxAmountTotal += taxAmount;
@@ -91,7 +92,7 @@ export const calculateInvoiceLines = (
             quantity: item.quantity,
             unitPrice: effectiveUnitPrice,
             discountAmount: membershipDiscount,
-            taxPercentage: service.taxPercentage,
+            taxPercentage,
             taxAmount,
             lineTotal,
         });

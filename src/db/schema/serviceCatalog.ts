@@ -23,7 +23,7 @@ export const serviceCatalog = pgTable(
 
         category: text("category"),
 
-        defaultPrice: integer("default_price").default(0).notNull(),
+        // defaultPrice: integer("default_price").default(0).notNull(),
 
         taxPercentage: integer("tax_percentage").default(0).notNull(),
 

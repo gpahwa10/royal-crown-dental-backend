@@ -238,7 +238,11 @@ const calculateInvoiceFromCatalog = async (input: {
 }) => {
     const uniqueServiceIds = [...new Set(input.items.map((item) => item.serviceId))];
     const services = await db
-        .select()
+        .select({
+            id: serviceCatalog.id,
+            serviceCode: serviceCatalog.serviceCode,
+            serviceName: serviceCatalog.serviceName,
+        })
         .from(serviceCatalog)
         .where(
             and(
@@ -262,9 +266,6 @@ const calculateInvoiceFromCatalog = async (input: {
             serviceId: service.id,
             serviceCode: service.serviceCode,
             serviceName: service.serviceName,
-            unitPrice: (service as any).defaultPrice ?? 0,
-            taxPercentage: (service as any).taxPercentage ?? 0,
-            isTaxable: (service as any).isTaxable ?? false,
         })),
         benefitsByServiceCode,
         input.manualDiscount ?? 0

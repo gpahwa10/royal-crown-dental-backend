@@ -16,7 +16,8 @@ export const patientIdParamSchema = z.object({
 export const invoiceLineItemSchema = z.object({
     serviceId: z.uuid(),
     quantity: z.coerce.number().int().min(1),
-    unitPrice: z.coerce.number().int().min(0).optional(),
+    unitPrice: z.coerce.number().int().min(0),
+    taxPercentage: z.coerce.number().int().min(0).max(100).optional().default(0),
 });
 
 export const createInvoiceSchema = z.object({
