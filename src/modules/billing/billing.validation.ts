@@ -13,12 +13,17 @@ export const patientIdParamSchema = z.object({
     patientId: z.uuid(),
 });
 
-export const invoiceLineItemSchema = z.object({
-    serviceId: z.uuid(),
-    quantity: z.coerce.number().int().min(1),
-    unitPrice: z.coerce.number().int().min(0),
-    taxPercentage: z.coerce.number().int().min(0).max(100).optional().default(0),
-});
+export const invoiceLineItemSchema = z
+    .object({
+        serviceId: z.uuid().optional(),
+        serviceName: z.string().trim().min(1).optional(),
+        quantity: z.coerce.number().int().min(1).default(1),
+        unitPrice: z.coerce.number().int().min(0),
+        taxPercentage: z.coerce.number().int().min(0).max(100).optional().default(0),
+    })
+    .refine((data) => data.serviceId || data.serviceName, {
+        message: "Either serviceId or serviceName must be provided",
+    });
 
 export const createInvoiceSchema = z.object({
     patientId: z.uuid(),

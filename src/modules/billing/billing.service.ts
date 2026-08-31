@@ -236,21 +236,28 @@ const calculateInvoiceFromCatalog = async (input: {
     manualDiscount?: number;
     skipMembershipDiscount?: boolean;
 }) => {
-    const uniqueServiceIds = [...new Set(input.items.map((item) => item.serviceId))];
-    const services = await db
-        .select({
-            id: serviceCatalog.id,
-            serviceCode: serviceCatalog.serviceCode,
-            serviceName: serviceCatalog.serviceName,
-        })
-        .from(serviceCatalog)
-        .where(
-            and(
-                inArray(serviceCatalog.id, uniqueServiceIds),
-                eq(serviceCatalog.clinicId, input.clinicId),
-                eq(serviceCatalog.isActive, true)
-            )
-        );
+    const serviceIds = input.items
+        .map((item) => item.serviceId)
+        .filter((id): id is string => Boolean(id));
+    const uniqueServiceIds = [...new Set(serviceIds)];
+
+    const services =
+        uniqueServiceIds.length > 0
+            ? await db
+                  .select({
+                      id: serviceCatalog.id,
+                      serviceCode: serviceCatalog.serviceCode,
+                      serviceName: serviceCatalog.serviceName,
+                  })
+                  .from(serviceCatalog)
+                  .where(
+                      and(
+                          inArray(serviceCatalog.id, uniqueServiceIds),
+                          eq(serviceCatalog.clinicId, input.clinicId),
+                          eq(serviceCatalog.isActive, true)
+                      )
+                  )
+            : [];
 
     if (services.length !== uniqueServiceIds.length) {
         throw new Error("Service not found");

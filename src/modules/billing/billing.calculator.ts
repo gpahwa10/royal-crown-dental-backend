@@ -1,7 +1,8 @@
 import { MembershipDiscountType } from "../membership/membership.constants";
 
 export type InvoiceLineInput = {
-    serviceId: string;
+    serviceId?: string;
+    serviceName?: string;
     quantity: number;
     unitPrice: number;
     taxPercentage?: number;
@@ -22,7 +23,7 @@ export type MembershipBenefitSnapshot = {
 };
 
 export type CalculatedInvoiceLine = {
-    serviceId: string;
+    serviceId: string | null;
     serviceName: string;
     quantity: number;
     unitPrice: number;
@@ -63,17 +64,20 @@ export const calculateInvoiceLines = (
     let taxAmountTotal = 0;
 
     for (const item of items) {
-        const service = serviceById.get(item.serviceId);
-        if (!service) {
+        const service = item.serviceId ? serviceById.get(item.serviceId) : undefined;
+        if (item.serviceId && !service) {
             throw new Error("Service not found");
         }
 
+        const serviceName = item.serviceName ?? service?.serviceName ?? "Dental Service";
         const effectiveUnitPrice = item.unitPrice ?? 0;
         const gross = effectiveUnitPrice * item.quantity;
-        const membershipDiscount = applyMembershipDiscount(
-            gross,
-            benefitsByServiceCode.get(service.serviceCode)
-        );
+        const membershipDiscount = service
+            ? applyMembershipDiscount(
+                  gross,
+                  benefitsByServiceCode.get(service.serviceCode)
+              )
+            : 0;
         membershipDiscountTotal += membershipDiscount;
 
         const netBeforeTax = Math.max(0, gross - membershipDiscount);
@@ -87,8 +91,8 @@ export const calculateInvoiceLines = (
         taxAmountTotal += taxAmount;
 
         calculatedLines.push({
-            serviceId: service.serviceId,
-            serviceName: service.serviceName,
+            serviceId: service?.serviceId ?? item.serviceId ?? null,
+            serviceName,
             quantity: item.quantity,
             unitPrice: effectiveUnitPrice,
             discountAmount: membershipDiscount,

@@ -62,4 +62,27 @@ describe("calculateInvoiceLines", () => {
         expect(result.manualDiscount).toBe(500);
         expect(result.grandTotal).toBe(8940);
     });
+
+    it("supports custom manual line items with direct serviceName and unitPrice", () => {
+        const result = calculateInvoiceLines(
+            [
+                {
+                    serviceName: "Custom Retainer Adjustment",
+                    quantity: 2,
+                    unitPrice: 1500,
+                    taxPercentage: 0,
+                },
+            ],
+            [],
+            new Map(),
+            100
+        );
+
+        expect(result.lines[0]?.serviceName).toBe("Custom Retainer Adjustment");
+        expect(result.lines[0]?.serviceId).toBeNull();
+        expect(result.lines[0]?.lineTotal).toBe(3000);
+        expect(result.subtotal).toBe(3000);
+        expect(result.manualDiscount).toBe(100);
+        expect(result.grandTotal).toBe(2900);
+    });
 });

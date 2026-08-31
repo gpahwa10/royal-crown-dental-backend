@@ -56,10 +56,11 @@ curl -X POST "${BASE_URL}/api/auth/login" \
 #
 # POST /api/invoices
 #
-# Frontend submits patient, services with unitPrice/quantity, and optional manual discount.
-# Backend fetches service metadata, applies active membership benefits, calculates tax and totals.
+# Frontend submits patient, items with manual unitPrice/quantity, and optional manual discount.
+# Each item can either specify a serviceCatalog ID (`serviceId`) or a custom name (`serviceName`).
+# Backend applies active membership benefits (if serviceId matches a benefit code), calculates tax, and totals.
 #
-# Request:
+# Request (Catalog services with frontend manual pricing):
 # {
 #   "patientId": "<uuid>",
 #   "clinicId": "<uuid>",
@@ -141,7 +142,7 @@ curl -X POST "${INVOICES}" \
   }'
 
 
-# Manual invoice (no linked source entity):
+# Manual invoice / custom line item (no linked catalog service):
 
 curl -X POST "${INVOICES}" \
   -H "${AUTH_HEADER}" \
@@ -152,7 +153,7 @@ curl -X POST "${INVOICES}" \
     "sourceType": "manual",
     "manualDiscount": 200,
     "items": [
-      { "serviceId": "'"${CONSULTATION_SERVICE_ID}"'", "quantity": 1, "unitPrice": 500 }
+      { "serviceName": "Emergency Retainer Repair", "quantity": 1, "unitPrice": 1500, "taxPercentage": 0 }
     ]
   }'
 
