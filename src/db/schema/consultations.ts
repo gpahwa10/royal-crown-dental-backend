@@ -7,6 +7,7 @@ import {
     varchar,
     pgEnum,
     uniqueIndex,
+    index,
 } from "drizzle-orm/pg-core";
 import { patients } from "./patients";
 import { employees } from "./employees";
@@ -57,5 +58,12 @@ export const consultations = pgTable(
         consultationCodeUnique: uniqueIndex(
             "consultations_consultation_code_unique"
         ).on(table.consultationCode),
+        patientIdIdx: index("consultations_patient_id_idx").on(table.patientId),
+        clinicIdIdx: index("consultations_clinic_id_idx").on(table.clinicId),
+        doctorIdIdx: index("consultations_doctor_id_idx").on(table.doctorId),
+        patientCreatedAtIdx: index("consultations_patient_created_at_idx").on(
+            table.patientId,
+            table.createdAt
+        ),
     })
 );

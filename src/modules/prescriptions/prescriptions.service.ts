@@ -103,6 +103,30 @@ export const getPrescriptionsForConsultation = async (
     return attachItemsToPrescriptions(prescriptionRows);
 };
 
+export const getPrescriptionsForConsultationIds = async (
+    consultationIds: string[]
+): Promise<Map<string, PrescriptionWithItems[]>> => {
+    if (consultationIds.length === 0) {
+        return new Map();
+    }
+
+    const prescriptionRows = await db
+        .select()
+        .from(prescriptions)
+        .where(inArray(prescriptions.consultationId, consultationIds));
+
+    const prescriptionsWithItems = await attachItemsToPrescriptions(prescriptionRows);
+
+    const map = new Map<string, PrescriptionWithItems[]>();
+    for (const item of prescriptionsWithItems) {
+        const list = map.get(item.consultationId) ?? [];
+        list.push(item);
+        map.set(item.consultationId, list);
+    }
+
+    return map;
+};
+
 export const createPrescriptionForConsultation = async (
     consultationId: string,
     input: CreatePrescriptionInput

@@ -562,35 +562,50 @@ export const listPatients = async (options: ListPatientsOptions) => {
 
 export const getPatientDetails = async (id: string) => {
     const patient = await getPatientRecord(id);
-    const medicalProfile = await getMedicalProfileByPatientId(patient.id);
-    const consents = await getConsentsByPatientId(patient.id);
 
-    const appointmentRows = await db
-        .select()
-        .from(appointments)
-        .where(eq(appointments.patientId, patient.id))
-        .orderBy(desc(appointments.scheduledAt));
-
-    const consultationRows = await listConsultationsByPatientId(patient.id);
-    const prescriptionRows = await listPrescriptionsByPatientId(patient.id);
-    const labRequestRows = await listLabRequestsByPatientId(patient.id);
-    const labRequestTimelineEvents =
-        await getLabRequestTimelineEventsForPatient(patient.id);
-    const dentalLabOrderRows = await listDentalLabOrdersByPatientId(patient.id);
-    const dentalLabTimelineEvents =
-        await getDentalLabTimelineEventsForPatient(patient.id);
-    const radiographRows = await listRadiographsByPatientId(patient.id);
-    const radiographTimelineEvents =
-        await getRadiographTimelineEventsForPatient(patient.id);
-    const clinicVisitRows = await listClinicVisitsByPatientId(patient.id);
-    const clinicVisitTimelineEvents =
-        await getClinicVisitTimelineEventsForPatient(patient.id);
-    const financialTimelineEvents =
-        await getFinancialTimelineEventsForPatient(patient.id);
-    const activeMembership = await getActivePatientMembership(patient.id);
-    const membershipHistory = await listPatientMemberships(patient.id);
-    const invoiceRows = await listInvoicesByPatientId(patient.id);
-    const outstandingBalance = await getPatientOutstandingBalance(patient.id);
+    const [
+        medicalProfile,
+        consents,
+        appointmentRows,
+        consultationRows,
+        prescriptionRows,
+        labRequestRows,
+        labRequestTimelineEvents,
+        dentalLabOrderRows,
+        dentalLabTimelineEvents,
+        radiographRows,
+        radiographTimelineEvents,
+        clinicVisitRows,
+        clinicVisitTimelineEvents,
+        financialTimelineEvents,
+        activeMembership,
+        membershipHistory,
+        invoiceRows,
+        outstandingBalance,
+    ] = await Promise.all([
+        getMedicalProfileByPatientId(patient.id),
+        getConsentsByPatientId(patient.id),
+        db
+            .select()
+            .from(appointments)
+            .where(eq(appointments.patientId, patient.id))
+            .orderBy(desc(appointments.scheduledAt)),
+        listConsultationsByPatientId(patient.id),
+        listPrescriptionsByPatientId(patient.id),
+        listLabRequestsByPatientId(patient.id),
+        getLabRequestTimelineEventsForPatient(patient.id),
+        listDentalLabOrdersByPatientId(patient.id),
+        getDentalLabTimelineEventsForPatient(patient.id),
+        listRadiographsByPatientId(patient.id),
+        getRadiographTimelineEventsForPatient(patient.id),
+        listClinicVisitsByPatientId(patient.id),
+        getClinicVisitTimelineEventsForPatient(patient.id),
+        getFinancialTimelineEventsForPatient(patient.id),
+        getActivePatientMembership(patient.id),
+        listPatientMemberships(patient.id),
+        listInvoicesByPatientId(patient.id),
+        getPatientOutstandingBalance(patient.id),
+    ]);
 
     return {
         patient,

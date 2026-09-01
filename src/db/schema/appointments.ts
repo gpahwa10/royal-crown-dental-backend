@@ -6,6 +6,7 @@ import {
   pgEnum,
   integer,
   varchar,
+  index,
 } from "drizzle-orm/pg-core";
 
 import { leads } from "./leads";
@@ -121,5 +122,10 @@ export const appointments = pgTable(
     )
       .defaultNow()
       .notNull(),
-  }
+  },
+  (table) => ({
+    patientIdIdx: index("appointments_patient_id_idx").on(table.patientId),
+    clinicIdIdx: index("appointments_clinic_id_idx").on(table.clinicId),
+    scheduledAtIdx: index("appointments_scheduled_at_idx").on(table.scheduledAt),
+  })
 );

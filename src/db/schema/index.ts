@@ -30,3 +30,6 @@ export * from "./invoices_items";
 export * from "./payments";
 export * from "./clinicVisits";
 export * from "./clinicVisitFiles";
+export * from "./patientOdontograms";
+export * from "./consultationOdontograms";
+export * from "./odontogramChanges";

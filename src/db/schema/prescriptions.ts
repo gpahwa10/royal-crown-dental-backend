@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, uniqueIndex, index } from "drizzle-orm/pg-core";
 import { consultations } from "./consultations";
 import { patients } from "./patients";
 import { employees } from "./employees";
@@ -24,5 +24,6 @@ export const prescriptions = pgTable(
         consultationIdUnique: uniqueIndex(
             "prescriptions_consultation_id_unique"
         ).on(table.consultationId),
+        patientIdIdx: index("prescriptions_patient_id_idx").on(table.patientId),
     })
 );

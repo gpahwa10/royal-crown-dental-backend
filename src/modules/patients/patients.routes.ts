@@ -19,6 +19,7 @@ import {
     updatePatientHandler,
     updatePatientMedicalProfileHandler,
 } from "./patients.controller";
+import { getPatientOdontogramHandler } from "../odontograms/odontograms.controller";
 
 const router = Router();
 
@@ -36,9 +37,11 @@ router.get("/:patientId/dental-lab-orders", listPatientDentalLabOrdersHandler);
 router.get("/:patientId/radiographs", listPatientRadiographsHandler);
 router.get("/:patientId/clinic-visits", listPatientClinicVisitsHandler);
 router.get("/:patientId/invoices", listPatientInvoicesHandler);
+router.get("/:patientId/odontogram", getPatientOdontogramHandler);
 router.patch("/:patientId/basic-details", updatePatientBasicDetailsHandler);
 router.patch("/:patientId/medical-profile", updatePatientMedicalProfileHandler);
 router.get("/:id", getPatientDetailsHandler);
+router.get("/:id/odontogram", getPatientOdontogramHandler);
 router.put("/:id", updatePatientHandler);
 router.patch("/:id/blacklist", blacklistPatientHandler);
 
