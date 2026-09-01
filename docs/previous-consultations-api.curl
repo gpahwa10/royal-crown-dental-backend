@@ -1,0 +1,283 @@
+#!/usr/bin/env bash
+# =============================================================================
+# Dental Backend — Previous Consultations API cURLs for Frontend
+# =============================================================================
+#
+# Use this reference when selecting a patient to:
+# 1. List and view all previous consultations (including completed, in-progress).
+# 2. View historical consultation odontograms and prescription records.
+# 3. Edit notes, diagnosis, treatment plans, and odontograms on completed consultations.
+#
+# Base URL:     http://localhost:4000/api (or http://localhost:3000/api)
+# Auth:         All routes require Authorization: Bearer <token>
+#
+# =============================================================================
+
+BASE_URL="http://localhost:4000/api"
+TOKEN="YOUR_BEARER_TOKEN"
+PATIENT_ID="PATIENT_UUID"
+CONSULTATION_ID="CONSULTATION_UUID"
+PRESCRIPTION_ID="PRESCRIPTION_UUID"
+
+AUTH_HEADER="Authorization: Bearer ${TOKEN}"
+JSON_HEADER="Content-Type: application/json"
+
+
+# =============================================================================
+# 1. LIST ALL PREVIOUS CONSULTATIONS FOR A PATIENT
+# =============================================================================
+# Triggered when selecting a patient in the consultation screen.
+# Returns full history in descending chronological order (newest first).
+# Includes:
+# - Doctor details (doctorName, doctor designation)
+# - Historical Odontogram snapshot (statusChart, planChart, chartVersion)
+# - Complete Prescriptions array with item details
+# - Clinical fields (chiefComplaint, diagnosis, treatmentPlan, clinicalNotes, consent)
+
+curl -X GET \
+  "$BASE_URL/patients/$PATIENT_ID/consultations" \
+  -H "$AUTH_HEADER"
+
+# Expected Response (200 OK):
+# {
+#   "success": true,
+#   "data": [
+#     {
+#       "id": "c1111111-1111-1111-1111-111111111111",
+#       "consultationCode": "CON000001",
+#       "clinicId": "clinic-uuid",
+#       "patientId": "PATIENT_UUID",
+#       "doctorId": "doctor-uuid",
+#       "doctorName": "Dr. Sarah Jenkins",
+#       "doctorDesignation": "Doctor",
+#       "doctor": {
+#         "id": "doctor-uuid",
+#         "name": "Dr. Sarah Jenkins",
+#         "designation": "Doctor"
+#       },
+#       "appointmentId": null,
+#       "chiefComplaint": "Toothache lower left molar",
+#       "diagnosis": "Deep dental caries on tooth 36",
+#       "treatmentPlan": "Root canal treatment and crown",
+#       "clinicalNotes": "Local anesthesia administered. Canal shaped and obturated.",
+#       "nextVisitDate": "2026-09-20T10:00:00.000Z",
+#       "status": "completed",
+#       "consentRequired": true,
+#       "consentSigned": true,
+#       "consentSignatureUrl": "https://storage.example.com/consents/sig.png",
+#       "consentSignedAt": "2026-09-10T10:15:00.000Z",
+#       "odontogram": {
+#         "consultationId": "c1111111-1111-1111-1111-111111111111",
+#         "patientId": "PATIENT_UUID",
+#         "clinicId": "clinic-uuid",
+#         "statusChart": {
+#           "16": { "condition": "caries" },
+#           "36": { "condition": "rct" }
+#         },
+#         "planChart": {},
+#         "chartVersion": 2,
+#         "readOnly": false,
+#         "updatedAt": "2026-09-10T10:30:00.000Z"
+#       },
+#       "prescriptions": [
+#         {
+#           "id": "rx-uuid",
+#           "consultationId": "c1111111-1111-1111-1111-111111111111",
+#           "patientId": "PATIENT_UUID",
+#           "doctorId": "doctor-uuid",
+#           "notes": "Take with water after food",
+#           "items": [
+#             {
+#               "id": "item-uuid-1",
+#               "medicineName": "Amoxicillin",
+#               "dosage": "500mg",
+#               "frequency": "Twice daily",
+#               "duration": "5 Days",
+#               "instructions": "After Food"
+#             },
+#             {
+#               "id": "item-uuid-2",
+#               "medicineName": "Ibuprofen",
+#               "dosage": "400mg",
+#               "frequency": "As needed for pain",
+#               "duration": "3 Days",
+#               "instructions": "After Food"
+#             }
+#           ],
+#           "createdAt": "2026-09-10T10:30:00.000Z"
+#         }
+#       ],
+#       "createdAt": "2026-09-10T10:00:00.000Z",
+#       "updatedAt": "2026-09-10T10:30:00.000Z"
+#     }
+#   ]
+# }
+
+
+# =============================================================================
+# 2. GET SINGLE PREVIOUS CONSULTATION DETAILS
+# =============================================================================
+# Fetch details when opening a specific consultation modal or view.
+
+curl -X GET \
+  "$BASE_URL/consultations/$CONSULTATION_ID" \
+  -H "$AUTH_HEADER"
+
+# Expected Response (200 OK):
+# {
+#   "success": true,
+#   "data": {
+#     "consultation": {
+#       "id": "CONSULTATION_UUID",
+#       "consultationCode": "CON000001",
+#       "status": "completed",
+#       "chiefComplaint": "Tooth pain",
+#       "diagnosis": "Caries",
+#       "treatmentPlan": "Restoration",
+#       "clinicalNotes": "Completed smoothly"
+#     },
+#     "odontogram": {
+#       "consultationId": "CONSULTATION_UUID",
+#       "statusChart": {
+#         "16": { "condition": "caries" }
+#       },
+#       "planChart": {},
+#       "chartVersion": 2,
+#       "readOnly": false
+#     },
+#     "prescriptions": [ ... ]
+#   }
+# }
+
+
+# =============================================================================
+# 3. EDIT CLINICAL DETAILS OF A PREVIOUS COMPLETED CONSULTATION
+# =============================================================================
+# Update diagnosis, clinical notes, treatment plan, or chief complaint
+# of an existing completed consultation.
+
+curl -X PUT \
+  "$BASE_URL/consultations/$CONSULTATION_ID" \
+  -H "$AUTH_HEADER" \
+  -H "$JSON_HEADER" \
+  -d '{
+    "diagnosis": "Deep dental caries on tooth 36 with periapical abscess",
+    "treatmentPlan": "Completed RCT, scheduled for core buildup",
+    "clinicalNotes": "Patient responded well to treatment, follow-up scheduled in 1 week.",
+    "nextVisitDate": "2026-09-21T09:30:00.000Z"
+  }'
+
+# Expected Response (200 OK):
+# {
+#   "success": true,
+#   "data": {
+#     "id": "CONSULTATION_UUID",
+#     "status": "completed",
+#     "diagnosis": "Deep dental caries on tooth 36 with periapical abscess",
+#     "treatmentPlan": "Completed RCT, scheduled for core buildup",
+#     "clinicalNotes": "Patient responded well to treatment, follow-up scheduled in 1 week.",
+#     "nextVisitDate": "2026-09-21T09:30:00.000Z",
+#     "updatedAt": "2026-09-14T12:00:00.000Z"
+#   }
+# }
+
+
+# =============================================================================
+# 4. EDIT ODONTOGRAM OF A PREVIOUS COMPLETED CONSULTATION
+# =============================================================================
+# Updates the historical odontogram for this consultation and synchronizes
+# the change to the patient's current chart.
+#
+# IMPORTANT: Provide the latest 'version' (chartVersion) for optimistic locking.
+
+curl -X PUT \
+  "$BASE_URL/consultations/$CONSULTATION_ID/odontogram" \
+  -H "$AUTH_HEADER" \
+  -H "$JSON_HEADER" \
+  -d '{
+    "statusChart": {
+      "16": { "condition": "caries" },
+      "36": { "condition": "rct" },
+      "26": { "condition": "crown" }
+    },
+    "planChart": {},
+    "version": 2
+  }'
+
+# Expected Response (200 OK):
+# {
+#   "success": true,
+#   "odontogram": {
+#     "consultationId": "CONSULTATION_UUID",
+#     "statusChart": {
+#       "16": { "condition": "caries" },
+#       "36": { "condition": "rct" },
+#       "26": { "condition": "crown" }
+#     },
+#     "planChart": {},
+#     "chartVersion": 3,
+#     "updatedAt": "2026-09-14T12:05:00.000Z"
+#   }
+# }
+
+
+# =============================================================================
+# 5. CREATE OR UPDATE PRESCRIPTION ON A COMPLETED CONSULTATION
+# =============================================================================
+
+# 5.1 Create Prescription for Consultation:
+curl -X POST \
+  "$BASE_URL/consultations/$CONSULTATION_ID/prescription" \
+  -H "$AUTH_HEADER" \
+  -H "$JSON_HEADER" \
+  -d '{
+    "notes": "Take after meals with water",
+    "items": [
+      {
+        "medicineName": "Amoxicillin",
+        "dosage": "500mg",
+        "frequency": "Twice daily",
+        "duration": "5 Days",
+        "instructions": "After Food"
+      }
+    ]
+  }'
+
+# 5.2 Update Existing Prescription:
+curl -X PUT \
+  "$BASE_URL/prescriptions/$PRESCRIPTION_ID" \
+  -H "$AUTH_HEADER" \
+  -H "$JSON_HEADER" \
+  -d '{
+    "notes": "Updated dosage instructions",
+    "items": [
+      {
+        "medicineName": "Amoxicillin",
+        "dosage": "625mg",
+        "frequency": "Twice daily",
+        "duration": "7 Days",
+        "instructions": "After Food"
+      }
+    ]
+  }'
+
+
+# =============================================================================
+# FRONTEND INTEGRATION WORKFLOW
+# =============================================================================
+#
+# 1. User selects Patient in the Consultation Screen:
+#    - Call GET /api/patients/:patientId/consultations
+#    - Display the previous consultations list (Date, Code, Doctor, Diagnosis, Status).
+#
+# 2. User clicks on a Previous Consultation to view:
+#    - Read the selected consultation object or call GET /api/consultations/:id.
+#    - Hydrate the React-Advanced-Odontogram with 'odontogram.statusChart' and 'odontogram.planChart'.
+#    - Display clinical notes, diagnosis, treatment plan, and prescriptions.
+#
+# 3. User edits a Previous Consultation:
+#    - When clinical fields change: Call PUT /api/consultations/:id.
+#    - When dental chart is modified: Call PUT /api/consultations/:id/odontogram with latest 'version'.
+#    - When prescriptions change: Call PUT /api/prescriptions/:prescriptionId.
+#
+# =============================================================================

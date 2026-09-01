@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# =============================================================================
+# Dental Backend — Previous Consultations API cURLs for Frontend
+# =============================================================================
+#
+# Base URL:     http://localhost:4000/api
+# Auth:         All routes require Authorization: Bearer <token>
+#
+# =============================================================================
+
+BASE_URL="${BASE_URL:-http://localhost:4000/api}"
+TOKEN="${TOKEN:-YOUR_BEARER_TOKEN}"
+PATIENT_ID="${PATIENT_ID:-PATIENT_UUID}"
+CONSULTATION_ID="${CONSULTATION_ID:-CONSULTATION_UUID}"
+PRESCRIPTION_ID="${PRESCRIPTION_ID:-PRESCRIPTION_UUID}"
+
+AUTH_HEADER="Authorization: Bearer ${TOKEN}"
+JSON_HEADER="Content-Type: application/json"
+
+# 1. List all previous consultations for a patient
+curl -X GET \
+  "$BASE_URL/patients/$PATIENT_ID/consultations" \
+  -H "$AUTH_HEADER"
+
+# 2. Get single consultation details (with historical odontogram)
+curl -X GET \
+  "$BASE_URL/consultations/$CONSULTATION_ID" \
+  -H "$AUTH_HEADER"
+
+# 3. Edit previous completed consultation clinical details
+curl -X PUT \
+  "$BASE_URL/consultations/$CONSULTATION_ID" \
+  -H "$AUTH_HEADER" \
+  -H "$JSON_HEADER" \
+  -d '{
+    "diagnosis": "Updated diagnosis on tooth 36",
+    "treatmentPlan": "Updated treatment plan",
+    "clinicalNotes": "Updated notes"
+  }'
+
+# 4. Edit odontogram of previous completed consultation
+curl -X PUT \
+  "$BASE_URL/consultations/$CONSULTATION_ID/odontogram" \
+  -H "$AUTH_HEADER" \
+  -H "$JSON_HEADER" \
+  -d '{
+    "statusChart": {
+      "16": { "condition": "caries" },
+      "36": { "condition": "rct" }
+    },
+    "planChart": {},
+    "version": 2
+  }'

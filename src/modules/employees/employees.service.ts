@@ -3,7 +3,7 @@ import { clinics } from "../../db/schema/clinic";
 import { employeeRoleAssignments } from "../../db/schema/employeeRoleAssignments";
 import { employees } from "../../db/schema/employees";
 import { employeeRoles } from "../../db/schema/roles";
-import { and, count, eq, exists, ne, or } from "drizzle-orm";
+import { and, count, eq, exists, inArray, ne, or } from "drizzle-orm";
 import bcrypt from "bcrypt";
 import { z } from "zod";
 import {
@@ -123,6 +123,35 @@ export const getEmployeeRoleNames = async (employeeId: string) => {
         .where(eq(employeeRoleAssignments.employeeId, employeeId));
 
     return rows.map((row) => row.name);
+};
+
+export const getEmployeeRolesByEmployeeIds = async (
+    employeeIds: string[]
+): Promise<Map<string, string[]>> => {
+    if (employeeIds.length === 0) {
+        return new Map();
+    }
+
+    const rows = await db
+        .select({
+            employeeId: employeeRoleAssignments.employeeId,
+            name: employeeRoles.name,
+        })
+        .from(employeeRoleAssignments)
+        .innerJoin(
+            employeeRoles,
+            eq(employeeRoleAssignments.roleId, employeeRoles.id)
+        )
+        .where(inArray(employeeRoleAssignments.employeeId, employeeIds));
+
+    const map = new Map<string, string[]>();
+    for (const row of rows) {
+        const existing = map.get(row.employeeId) ?? [];
+        existing.push(row.name);
+        map.set(row.employeeId, existing);
+    }
+
+    return map;
 };
 
 export const assignRolesToEmployee = async (
@@ -318,17 +347,18 @@ export const listEmployees = async (options: ListEmployeesOptions = {}) => {
         .limit(limit)
         .offset(offset);
 
-    const hoursMap = await getEmployeeWorkingHoursByEmployeeIds(
-        employeesData.map((e) => e.id)
-    );
+    const employeeIds = employeesData.map((e) => e.id);
 
-    const items = await Promise.all(
-        employeesData.map(async (employee) => ({
-            ...omitPassword(employee),
-            roles: await getEmployeeRoleNames(employee.id),
-            workingHours: hoursMap.get(employee.id) ?? [],
-        }))
-    );
+    const [hoursMap, rolesMap] = await Promise.all([
+        getEmployeeWorkingHoursByEmployeeIds(employeeIds),
+        getEmployeeRolesByEmployeeIds(employeeIds),
+    ]);
+
+    const items = employeesData.map((employee) => ({
+        ...omitPassword(employee),
+        roles: rolesMap.get(employee.id) ?? [],
+        workingHours: hoursMap.get(employee.id) ?? [],
+    }));
 
     return {
         items,

@@ -8,6 +8,13 @@
       "when": 1786607639316,
       "tag": "0000_purple_fenris",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788245121437,
+      "tag": "0001_amazing_gabe_jones",
+      "breakpoints": true
     }
   ]
 }

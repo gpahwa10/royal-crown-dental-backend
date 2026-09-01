@@ -1,15 +1,23 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "../../db/client";
 import { appointments } from "../../db/schema/appointments";
 import { clinics } from "../../db/schema/clinic";
 import { clinicVisits } from "../../db/schema/clinicVisits";
 import { consultations } from "../../db/schema/consultations";
+import { consultationOdontograms } from "../../db/schema/consultationOdontograms";
 import { employeeRoleAssignments } from "../../db/schema/employeeRoleAssignments";
 import { employees } from "../../db/schema/employees";
 import { patients } from "../../db/schema/patients";
 import { employeeRoles } from "../../db/schema/roles";
 import { ROLE_DOCTOR } from "../auth/auth.constants";
-import { getPrescriptionsForConsultation } from "../prescriptions/prescriptions.service";
+import {
+    getPrescriptionsForConsultation,
+    getPrescriptionsForConsultationIds,
+} from "../prescriptions/prescriptions.service";
+import {
+    finalizeConsultationOdontogram,
+    getConsultationOdontogram,
+} from "../odontograms/odontograms.service";
 import { generateConsultationCode } from "./consultations.utils";
 
 export interface CreateConsultationInput {
@@ -138,21 +146,21 @@ export const getConsultationRecord = async (id: string) => {
 };
 
 export const createConsultation = async (input: CreateConsultationInput) => {
-    await assertClinicExists(input.clinicId);
+    const [patient] = await Promise.all([
+        assertPatientExists(input.patientId),
+        assertClinicExists(input.clinicId),
+        assertDoctorInClinic(input.doctorId, input.clinicId),
+        input.appointmentId
+            ? assertAppointmentForPatient(
+                  input.appointmentId,
+                  input.patientId,
+                  input.clinicId
+              )
+            : Promise.resolve(null),
+    ]);
 
-    const patient = await assertPatientExists(input.patientId);
     if (patient.clinicId !== input.clinicId) {
         throw new Error("Patient does not belong to the selected clinic");
-    }
-
-    await assertDoctorInClinic(input.doctorId, input.clinicId);
-
-    if (input.appointmentId) {
-        await assertAppointmentForPatient(
-            input.appointmentId,
-            input.patientId,
-            input.clinicId
-        );
     }
 
     const [consultation] = await db.transaction(async (tx) => {
@@ -180,9 +188,11 @@ export const createConsultation = async (input: CreateConsultationInput) => {
 export const getConsultationById = async (id: string) => {
     const consultation = await getConsultationRecord(id);
     const prescriptions = await getPrescriptionsForConsultation(id);
+    const odontogram = await getConsultationOdontogram(id);
 
     return {
         consultation,
+        odontogram,
         prescriptions,
     };
 };
@@ -271,48 +281,111 @@ export const startConsultation = async (id: string) => {
 };
 
 export const completeConsultation = async (id: string) => {
-    const consultation = await getConsultationRecord(id);
+    return await db.transaction(async (tx) => {
+        const [consultation] = await tx
+            .select()
+            .from(consultations)
+            .where(eq(consultations.id, id));
 
-    if (consultation.status !== "in_progress") {
-        throw new Error("Only in-progress consultations can be completed");
-    }
+        if (!consultation) {
+            throw new Error("Consultation not found");
+        }
 
-    if (!consultation.diagnosis?.trim()) {
-        throw new Error("Diagnosis is required before completing consultation");
-    }
+        if (consultation.status !== "in_progress") {
+            throw new Error("Only in-progress consultations can be completed");
+        }
 
-    if (consultation.consentRequired && !consultation.consentSigned) {
-        throw new Error("Consent required before completion");
-    }
+        if (!consultation.diagnosis?.trim()) {
+            throw new Error("Diagnosis is required before completing consultation");
+        }
 
-    const [updated] = await db
-        .update(consultations)
-        .set({
-            status: "completed",
-            updatedAt: new Date(),
-        })
-        .where(eq(consultations.id, consultation.id))
-        .returning();
+        if (consultation.consentRequired && !consultation.consentSigned) {
+            throw new Error("Consent required before completion");
+        }
 
-    await db
-        .update(clinicVisits)
-        .set({
-            outcome: "consultation_completed",
-            updatedAt: new Date(),
-        })
-        .where(eq(clinicVisits.consultationId, consultation.id));
+        await finalizeConsultationOdontogram(
+            tx,
+            consultation.id,
+            consultation.clinicId
+        );
 
-    return updated;
+        const [updated] = await tx
+            .update(consultations)
+            .set({
+                status: "completed",
+                updatedAt: new Date(),
+            })
+            .where(eq(consultations.id, consultation.id))
+            .returning();
+
+        await tx
+            .update(clinicVisits)
+            .set({
+                outcome: "consultation_completed",
+                updatedAt: new Date(),
+            })
+            .where(eq(clinicVisits.consultationId, consultation.id));
+
+        return updated;
+    });
 };
 
 export const listConsultationsByPatientId = async (patientId: string) => {
     await assertPatientExists(patientId);
 
-    return db
-        .select()
+    const rows = await db
+        .select({
+            consultation: consultations,
+            doctorName: employees.name,
+            doctorDesignation: employees.designation,
+        })
         .from(consultations)
+        .leftJoin(employees, eq(consultations.doctorId, employees.id))
         .where(eq(consultations.patientId, patientId))
         .orderBy(desc(consultations.createdAt));
+
+    if (rows.length === 0) {
+        return [];
+    }
+
+    const consultationIds = rows.map((r) => r.consultation.id);
+
+    const [odontogramRows, prescriptionsByConsultationId] = await Promise.all([
+        db
+            .select()
+            .from(consultationOdontograms)
+            .where(inArray(consultationOdontograms.consultationId, consultationIds)),
+        getPrescriptionsForConsultationIds(consultationIds),
+    ]);
+
+    const odontogramByConsultationId = new Map(
+        odontogramRows.map((o) => [
+            o.consultationId,
+            {
+                consultationId: o.consultationId,
+                patientId: o.patientId,
+                clinicId: o.clinicId,
+                statusChart: o.statusChart,
+                planChart: o.planChart ?? {},
+                chartVersion: o.chartVersion,
+                readOnly: false,
+                updatedAt: o.updatedAt,
+            },
+        ])
+    );
+
+    return rows.map(({ consultation, doctorName, doctorDesignation }) => ({
+        ...consultation,
+        doctorName,
+        doctorDesignation,
+        doctor: {
+            id: consultation.doctorId,
+            name: doctorName,
+            designation: doctorDesignation,
+        },
+        odontogram: odontogramByConsultationId.get(consultation.id) ?? null,
+        prescriptions: prescriptionsByConsultationId.get(consultation.id) ?? [],
+    }));
 };
 
 export { assertConsultationClinicAccess } from "./consultations.utils";

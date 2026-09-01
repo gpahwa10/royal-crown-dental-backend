@@ -1,0 +1,298 @@
+#!/usr/bin/env bash
+# ============================================================
+# Dental Backend — Patient-Cumulative Odontogram API cURLs
+# ============================================================
+#
+# Base URL:        http://localhost:4000/api (or default http://localhost:3000/api)
+# Auth:            All routes require Authorization: Bearer <token>
+#
+# This script serves as the executable reference & integration guide
+# for the patient-level cumulative dental odontogram / dental chart.
+#
+# ============================================================
+
+BASE_URL="http://localhost:3000/api"
+TOKEN="YOUR_BEARER_TOKEN"
+PATIENT_ID="PATIENT_UUID"
+CONSULTATION_ID="CONSULTATION_UUID"
+
+AUTH_HEADER="Authorization: Bearer ${TOKEN}"
+JSON_HEADER="Content-Type: application/json"
+
+# ============================================================
+# 1. GET CURRENT PATIENT ODONTOGRAM (LATEST CUMULATIVE STATE)
+# ============================================================
+# Returns the patient's latest known cumulative dental chart.
+# If no chart exists yet, returns: { "odontogram": null }
+
+curl -X GET \
+  "$BASE_URL/patients/$PATIENT_ID/odontogram" \
+  -H "$AUTH_HEADER"
+
+# Expected Response (200 OK):
+# {
+#   "success": true,
+#   "odontogram": {
+#     "patientId": "PATIENT_UUID",
+#     "statusChart": {
+#       "16": { "condition": "caries" },
+#       "36": { "condition": "rct" }
+#     },
+#     "planChart": {},
+#     "version": 5,
+#     "updatedAt": "2026-09-14T10:30:00.000Z"
+#   }
+# }
+
+
+# ============================================================
+# 2. INITIALIZE CONSULTATION ODONTOGRAM
+# ============================================================
+# Initializes a working odontogram for a consultation.
+# IDEMPOTENT:
+# - If consultation chart already exists, returns existing working chart.
+# - Otherwise, copies patient's current chart (or blank if new patient).
+#
+# Frontend: Take statusChart and planChart and hydrate the odontogram
+# component. Do not create a new blank chart if the API returns existing state.
+
+curl -X POST \
+  "$BASE_URL/consultations/$CONSULTATION_ID/odontogram/initialize" \
+  -H "$AUTH_HEADER"
+
+# Expected Response (200 OK):
+# {
+#   "success": true,
+#   "odontogram": {
+#     "consultationId": "CONSULTATION_UUID",
+#     "patientId": "PATIENT_UUID",
+#     "statusChart": {
+#       "16": { "condition": "caries" }
+#     },
+#     "planChart": {},
+#     "chartVersion": 1,
+#     "readOnly": false
+#   }
+# }
+
+
+# ============================================================
+# 3. GET CONSULTATION ODONTOGRAM
+# ============================================================
+# Retrieves the working or snapshot chart specifically for this consultation.
+# If consultation is completed or cancelled, readOnly is true.
+
+curl -X GET \
+  "$BASE_URL/consultations/$CONSULTATION_ID/odontogram" \
+  -H "$AUTH_HEADER"
+
+# Expected Response (200 OK):
+# {
+#   "success": true,
+#   "odontogram": {
+#     "consultationId": "CONSULTATION_UUID",
+#     "patientId": "PATIENT_UUID",
+#     "statusChart": {
+#       "16": { "condition": "caries" },
+#       "36": { "condition": "rct" }
+#     },
+#     "planChart": {},
+#     "chartVersion": 2,
+#     "readOnly": false
+#   }
+# }
+
+
+# ============================================================
+# 4. UPDATE CONSULTATION ODONTOGRAM (DEBOUNCED SAVES)
+# ============================================================
+# Updates the working chart for an active consultation.
+# OPTIMISTIC LOCKING:
+# The frontend MUST send the latest 'version' returned by the backend.
+# If another user modified the chart, backend returns 409 Conflict:
+# { "error": { "code": "ODONTOGRAM_VERSION_CONFLICT", "message": "The dental chart was updated by another user. Reload the latest chart before saving again." } }
+
+curl -X PUT \
+  "$BASE_URL/consultations/$CONSULTATION_ID/odontogram" \
+  -H "$AUTH_HEADER" \
+  -H "$JSON_HEADER" \
+  -d '{
+    "statusChart": {
+      "16": { "condition": "caries" },
+      "36": { "condition": "rct" }
+    },
+    "planChart": {},
+    "version": 1
+  }'
+
+# Expected Response (200 OK):
+# {
+#   "success": true,
+#   "odontogram": {
+#     "consultationId": "CONSULTATION_UUID",
+#     "statusChart": {
+#       "16": { "condition": "caries" },
+#       "36": { "condition": "rct" }
+#     },
+#     "planChart": {},
+#     "chartVersion": 2,
+#     "updatedAt": "2026-09-14T11:00:00.000Z"
+#   }
+# }
+
+
+# ============================================================
+# 5. GET COMPLETE CONSULTATION (WITH HISTORICAL ODONTOGRAM)
+# ============================================================
+# When opening a previous consultation, use this odontogram snapshot.
+# Do NOT call the patient current odontogram endpoint to reconstruct
+# historical consultation state.
+
+curl -X GET \
+  "$BASE_URL/consultations/$CONSULTATION_ID" \
+  -H "$AUTH_HEADER"
+
+# Expected Response (200 OK):
+# {
+#   "success": true,
+#   "data": {
+#     "consultation": {
+#       "id": "CONSULTATION_UUID",
+#       "status": "completed",
+#       "patientId": "PATIENT_UUID"
+#     },
+#     "odontogram": {
+#       "consultationId": "CONSULTATION_UUID",
+#       "patientId": "PATIENT_UUID",
+#       "statusChart": {
+#         "16": { "condition": "caries" },
+#         "36": { "condition": "rct" }
+#       },
+#       "planChart": {},
+#       "chartVersion": 2,
+#       "readOnly": true
+#     },
+#     "prescriptions": []
+#   }
+# }
+
+
+# ============================================================
+# 6. COMPLETE CONSULTATION (FINALIZES ODONTOGRAM)
+# ============================================================
+# Finalizes consultation and updates patient current chart atomically:
+# consultation odontogram
+#       ↓
+# historical consultation snapshot (immutable)
+#       ↓
+# patient current odontogram (updated with latest cumulative state)
+#       ↓
+# consultation completed
+#       ↓
+# clinic visit completed
+
+curl -X POST \
+  "$BASE_URL/consultations/$CONSULTATION_ID/complete" \
+  -H "$AUTH_HEADER" \
+  -H "$JSON_HEADER" \
+  -d '{}'
+
+
+# ============================================================
+# CUMULATIVE ODONTOGRAM SCENARIO
+# ============================================================
+#
+# Patient: P001
+#
+# Consultation C001 - 10 Sept
+# Tooth 16 -> Caries
+#
+# After completion:
+# Patient current chart:
+# 16 -> Caries
+#
+# Consultation C002 - 14 Sept
+# Initialize chart
+# Expected:
+# 16 -> Caries
+#
+# Add:
+# 36 -> RCT
+#
+# After completion:
+# Patient current chart:
+# 16 -> Caries
+# 36 -> RCT
+#
+# Historical C001 must still show:
+# 16 -> Caries
+#
+# Historical C002 must show:
+# 16 -> Caries
+# 36 -> RCT
+#
+# ============================================================
+
+# Step 1: Initialize C001 (returns empty chart for new patient)
+curl -s -X POST "$BASE_URL/consultations/C001/odontogram/initialize" -H "$AUTH_HEADER"
+
+# Step 2: Record Tooth 16 -> Caries in C001
+curl -s -X PUT "$BASE_URL/consultations/C001/odontogram" \
+  -H "$AUTH_HEADER" -H "$JSON_HEADER" \
+  -d '{ "statusChart": { "16": { "condition": "caries" } }, "planChart": {}, "version": 1 }'
+
+# Step 3: Complete C001 (Patient current chart becomes: 16 -> Caries)
+curl -s -X POST "$BASE_URL/consultations/C001/complete" -H "$AUTH_HEADER"
+
+# Step 4: Initialize C002 (Automatically initialized with patient current chart: 16 -> Caries)
+curl -s -X POST "$BASE_URL/consultations/C002/odontogram/initialize" -H "$AUTH_HEADER"
+
+# Step 5: Add Tooth 36 -> RCT in C002 (Cumulative state: 16 -> Caries, 36 -> RCT)
+curl -s -X PUT "$BASE_URL/consultations/C002/odontogram" \
+  -H "$AUTH_HEADER" -H "$JSON_HEADER" \
+  -d '{ "statusChart": { "16": { "condition": "caries" }, "36": { "condition": "rct" } }, "planChart": {}, "version": 1 }'
+
+# Step 6: Complete C002 (Patient current chart becomes: 16 -> Caries, 36 -> RCT)
+curl -s -X POST "$BASE_URL/consultations/C002/complete" -H "$AUTH_HEADER"
+
+# Step 7: View Historical C001 (Snapshot remains unchanged: ONLY 16 -> Caries)
+curl -s -X GET "$BASE_URL/consultations/C001" -H "$AUTH_HEADER"
+
+# Step 8: View Historical C002 (Snapshot shows: 16 -> Caries, 36 -> RCT)
+curl -s -X GET "$BASE_URL/consultations/C002" -H "$AUTH_HEADER"
+
+# Step 9: View Current Patient Chart (Latest cumulative state: 16 -> Caries, 36 -> RCT)
+curl -s -X GET "$BASE_URL/patients/$PATIENT_ID/odontogram" -H "$AUTH_HEADER"
+
+
+# ============================================================
+# FRONTEND FLOW
+# ============================================================
+#
+# NEW CONSULTATION
+# ----------------
+# 1. Create/start consultation using existing consultation APIs.
+# 2. Call: POST /consultations/:consultationId/odontogram/initialize
+# 3. Receive: statusChart, planChart, chartVersion
+# 4. Hydrate the odontogram with the returned state.
+# 5. User modifies odontogram.
+# 6. Frontend debounces changes.
+# 7. Call: PUT /consultations/:consultationId/odontogram
+# 8. Send: statusChart, planChart, latest version
+# 9. Store returned chartVersion.
+# 10. On consultation completion: call existing complete endpoint.
+# 11. Backend updates patient current chart transactionally.
+#
+# PREVIOUS CONSULTATION
+# ---------------------
+# 1. Call: GET /consultations/:consultationId
+# 2. Read: response.odontogram (or response.data.odontogram)
+# 3. Hydrate odontogram using that snapshot.
+# 4. If response/readOnly is true: render chart as read-only.
+# 5. NEVER replace the historical chart with: GET /patients/:patientId/odontogram
+#
+# IMPORTANT DISTINCTION FOR FRONTEND:
+# - PATIENT CURRENT CHART = latest cumulative dental state
+# - CONSULTATION CHART = complete cumulative dental state at that consultation
+#   (Never store only delta changes; store the entire cumulative chart).
+# ============================================================
