@@ -1,5 +1,5 @@
 import { Response } from "express";
-import { desc } from "drizzle-orm";
+import { desc, like } from "drizzle-orm";
 import { ZodError } from "zod";
 import { db } from "../../db/client";
 import { patients } from "../../db/schema/patients";
@@ -83,6 +83,7 @@ export const generatePatientCode = async (executor: DbExecutor = db) => {
     const [latest] = await executor
         .select({ patientCode: patients.patientCode })
         .from(patients)
+        .where(like(patients.patientCode, `${PATIENT_CODE_PREFIX}%`))
         .orderBy(desc(patients.patientCode))
         .limit(1);
 
