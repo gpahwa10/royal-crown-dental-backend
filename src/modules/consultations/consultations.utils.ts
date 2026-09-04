@@ -1,5 +1,5 @@
 import { Response } from "express";
-import { desc } from "drizzle-orm";
+import { desc, like } from "drizzle-orm";
 import { ZodError } from "zod";
 import { db } from "../../db/client";
 import { consultations } from "../../db/schema/consultations";
@@ -64,9 +64,12 @@ export const handleError = (res: Response, error: unknown) => {
 type DbExecutor = Pick<typeof db, "select">;
 
 export const generateConsultationCode = async (executor: DbExecutor = db) => {
+    // Only consider canonical codes (CON000001). Ignore test / legacy rows
+    // like C_TEST_... which sort above CON* lexicographically and break parseInt.
     const [latest] = await executor
         .select({ consultationCode: consultations.consultationCode })
         .from(consultations)
+        .where(like(consultations.consultationCode, `${CONSULTATION_CODE_PREFIX}%`))
         .orderBy(desc(consultations.consultationCode))
         .limit(1);
 
@@ -74,10 +77,10 @@ export const generateConsultationCode = async (executor: DbExecutor = db) => {
         return `${CONSULTATION_CODE_PREFIX}${String(1).padStart(CONSULTATION_CODE_PAD_LENGTH, "0")}`;
     }
 
-    const sequence = Number.parseInt(
-        latest.consultationCode.replace(CONSULTATION_CODE_PREFIX, ""),
-        10
+    const match = latest.consultationCode.match(
+        new RegExp(`^${CONSULTATION_CODE_PREFIX}(\\d+)$`)
     );
+    const sequence = match ? Number.parseInt(match[1], 10) : Number.NaN;
 
     if (Number.isNaN(sequence)) {
         throw new Error("Unable to generate consultation code");
