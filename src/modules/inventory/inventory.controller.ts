@@ -4,23 +4,17 @@ import {
     bulkCreateInventoryItems,
     createCategory,
     createInventoryItem,
-    createLocation,
     createVariant,
     deleteCategory,
     deleteInventoryItem,
-    deleteLocation,
     deleteVariant,
     getCategoryById,
     getInventoryItemById,
-    getItemHistory,
-    getLocationById,
     listCategories,
     listInventoryItems,
     listInventoryItemsByClinic,
-    listLocations,
     updateCategory,
     updateInventoryItem,
-    updateLocation,
     updateVariant,
 } from "./inventory.service";
 import {
@@ -32,13 +26,8 @@ import {
     getLowStockItems,
     getOutOfStockItems,
     getStockSummary,
-    getTransactionById,
-    getWarehouseDashboard,
-    getWarehouseStock,
     listStock,
-    listTransactions,
     purchaseInventory,
-    transferInventory,
 } from "./inventory.stock.service";
 import { handleError } from "./inventory.utils";
 import {
@@ -49,21 +38,14 @@ import {
     consumeInventorySchema,
     createCategorySchema,
     createInventoryItemSchema,
-    createLocationSchema,
     createVariantSchema,
     getInventoryItemQuerySchema,
     inventoryItemParamsSchema,
-    itemHistoryQuerySchema,
     listInventoryItemsQuerySchema,
     listStockQuerySchema,
-    listTransactionsQuerySchema,
-    locationParamsSchema,
     purchaseInventorySchema,
-    transactionParamsSchema,
-    transferInventorySchema,
     updateCategorySchema,
     updateInventoryItemSchema,
-    updateLocationSchema,
     updateVariantSchema,
     variantParamsSchema,
 } from "./inventory.validation";
@@ -110,7 +92,13 @@ export const bulkCreateInventoryItemsHandler = async (
 ) => {
     try {
         const body = bulkCreateInventoryItemsSchema.parse(req.body);
-        const items = await bulkCreateInventoryItems(body);
+        const clinicId = requireDeploymentClinic(req);
+        const items = await bulkCreateInventoryItems(
+            body.map((item) => ({
+                ...item,
+                clinicId: requireDeploymentClinic(req, item.clinicId) ?? clinicId,
+            }))
+        );
         return res.status(201).json({
             success: true,
             data: items.map((item) => ({
@@ -134,6 +122,9 @@ export const updateInventoryItemHandler = async (
     try {
         const { id } = inventoryItemParamsSchema.parse(req.params);
         const body = updateInventoryItemSchema.parse(req.body);
+        if (body.clinicId) {
+            requireDeploymentClinic(req, body.clinicId);
+        }
         const item = await updateInventoryItem(id, body);
         return res.status(200).json({ success: true, data: item });
     } catch (error) {
@@ -201,21 +192,6 @@ export const getInventoryItemHandler = async (req: AuthRequest, res: Response) =
             clinicId: requireDeploymentClinic(req, query.clinicId),
         });
         return res.status(200).json({ success: true, data: item });
-    } catch (error) {
-        return handleError(res, error);
-    }
-};
-
-export const getItemHistoryHandler = async (req: AuthRequest, res: Response) => {
-    try {
-        const { id } = inventoryItemParamsSchema.parse(req.params);
-        const query = itemHistoryQuerySchema.parse(req.query);
-        const result = await getItemHistory(id, query);
-        return res.status(200).json({
-            success: true,
-            data: result.items,
-            pagination: result.pagination,
-        });
     } catch (error) {
         return handleError(res, error);
     }
@@ -302,73 +278,13 @@ export const deleteCategoryHandler = async (req: AuthRequest, res: Response) => 
     }
 };
 
-export const createLocationHandler = async (req: AuthRequest, res: Response) => {
-    try {
-        const body = createLocationSchema.parse(req.body);
-        const location = await createLocation(body);
-        return res.status(201).json({ success: true, data: location });
-    } catch (error) {
-        return handleError(res, error);
-    }
-};
-
-export const listLocationsHandler = async (req: AuthRequest, res: Response) => {
-    try {
-        const locations = await listLocations();
-        return res.status(200).json({ success: true, data: locations });
-    } catch (error) {
-        return handleError(res, error);
-    }
-};
-
-export const getLocationHandler = async (req: AuthRequest, res: Response) => {
-    try {
-        const { id } = locationParamsSchema.parse(req.params);
-        const location = await getLocationById(id);
-        return res.status(200).json({ success: true, data: location });
-    } catch (error) {
-        return handleError(res, error);
-    }
-};
-
-export const updateLocationHandler = async (req: AuthRequest, res: Response) => {
-    try {
-        const { id } = locationParamsSchema.parse(req.params);
-        const body = updateLocationSchema.parse(req.body);
-        const location = await updateLocation(id, body);
-        return res.status(200).json({ success: true, data: location });
-    } catch (error) {
-        return handleError(res, error);
-    }
-};
-
-export const deleteLocationHandler = async (req: AuthRequest, res: Response) => {
-    try {
-        const { id } = locationParamsSchema.parse(req.params);
-        const location = await deleteLocation(id);
-        return res.status(200).json({ success: true, data: location });
-    } catch (error) {
-        return handleError(res, error);
-    }
-};
-
 export const listStockHandler = async (req: AuthRequest, res: Response) => {
     try {
         const query = listStockQuerySchema.parse(req.query);
-        const result = await listStock(query);
-        return res.status(200).json({ success: true, data: result });
-    } catch (error) {
-        return handleError(res, error);
-    }
-};
-
-export const getWarehouseStockHandler = async (
-    req: AuthRequest,
-    res: Response
-) => {
-    try {
-        const query = listStockQuerySchema.parse(req.query);
-        const result = await getWarehouseStock(query);
+        const result = await listStock({
+            ...query,
+            clinicId: requireDeploymentClinic(req, query.clinicId),
+        });
         return res.status(200).json({ success: true, data: result });
     } catch (error) {
         return handleError(res, error);
@@ -392,7 +308,10 @@ export const getClinicStockHandler = async (req: AuthRequest, res: Response) => 
 export const getLowStockHandler = async (req: AuthRequest, res: Response) => {
     try {
         const query = listStockQuerySchema.parse(req.query);
-        const result = await getLowStockItems(query);
+        const result = await getLowStockItems({
+            ...query,
+            clinicId: requireDeploymentClinic(req, query.clinicId),
+        });
         return res.status(200).json({ success: true, data: result });
     } catch (error) {
         return handleError(res, error);
@@ -402,7 +321,10 @@ export const getLowStockHandler = async (req: AuthRequest, res: Response) => {
 export const getOutOfStockHandler = async (req: AuthRequest, res: Response) => {
     try {
         const query = listStockQuerySchema.parse(req.query);
-        const result = await getOutOfStockItems(query);
+        const result = await getOutOfStockItems({
+            ...query,
+            clinicId: requireDeploymentClinic(req, query.clinicId),
+        });
         return res.status(200).json({ success: true, data: result });
     } catch (error) {
         return handleError(res, error);
@@ -411,7 +333,7 @@ export const getOutOfStockHandler = async (req: AuthRequest, res: Response) => {
 
 export const getStockSummaryHandler = async (req: AuthRequest, res: Response) => {
     try {
-        const summary = await getStockSummary();
+        const summary = await getStockSummary(requireDeploymentClinic(req));
         return res.status(200).json({ success: true, data: summary });
     } catch (error) {
         return handleError(res, error);
@@ -424,20 +346,10 @@ export const purchaseInventoryHandler = async (
 ) => {
     try {
         const body = purchaseInventorySchema.parse(req.body);
-        const result = await purchaseInventory(body);
-        return res.status(201).json({ success: true, data: result });
-    } catch (error) {
-        return handleError(res, error);
-    }
-};
-
-export const transferInventoryHandler = async (
-    req: AuthRequest,
-    res: Response
-) => {
-    try {
-        const body = transferInventorySchema.parse(req.body);
-        const result = await transferInventory(body);
+        const result = await purchaseInventory({
+            ...body,
+            clinicId: requireDeploymentClinic(req),
+        });
         return res.status(201).json({ success: true, data: result });
     } catch (error) {
         return handleError(res, error);
@@ -447,7 +359,10 @@ export const transferInventoryHandler = async (
 export const consumeInventoryHandler = async (req: AuthRequest, res: Response) => {
     try {
         const body = consumeInventorySchema.parse(req.body);
-        const result = await consumeInventory(body);
+        const result = await consumeInventory({
+            ...body,
+            clinicId: requireDeploymentClinic(req),
+        });
         return res.status(201).json({ success: true, data: result });
     } catch (error) {
         return handleError(res, error);
@@ -457,28 +372,11 @@ export const consumeInventoryHandler = async (req: AuthRequest, res: Response) =
 export const adjustInventoryHandler = async (req: AuthRequest, res: Response) => {
     try {
         const body = adjustInventorySchema.parse(req.body);
-        const result = await adjustInventory(body);
+        const result = await adjustInventory({
+            ...body,
+            clinicId: requireDeploymentClinic(req),
+        });
         return res.status(201).json({ success: true, data: result });
-    } catch (error) {
-        return handleError(res, error);
-    }
-};
-
-export const listTransactionsHandler = async (req: AuthRequest, res: Response) => {
-    try {
-        const query = listTransactionsQuerySchema.parse(req.query);
-        const result = await listTransactions(query);
-        return res.status(200).json({ success: true, data: result });
-    } catch (error) {
-        return handleError(res, error);
-    }
-};
-
-export const getTransactionHandler = async (req: AuthRequest, res: Response) => {
-    try {
-        const { id } = transactionParamsSchema.parse(req.params);
-        const transaction = await getTransactionById(id);
-        return res.status(200).json({ success: true, data: transaction });
     } catch (error) {
         return handleError(res, error);
     }
@@ -489,7 +387,9 @@ export const getInventoryDashboardHandler = async (
     res: Response
 ) => {
     try {
-        const dashboard = await getInventoryDashboard();
+        const dashboard = await getInventoryDashboard(
+            requireDeploymentClinic(req)
+        );
         return res.status(200).json({ success: true, data: dashboard });
     } catch (error) {
         return handleError(res, error);
@@ -505,18 +405,6 @@ export const getClinicInventoryDashboardHandler = async (
         const dashboard = await getClinicInventoryDashboard(
             requireDeploymentClinic(req, clinicId)
         );
-        return res.status(200).json({ success: true, data: dashboard });
-    } catch (error) {
-        return handleError(res, error);
-    }
-};
-
-export const getWarehouseDashboardHandler = async (
-    req: AuthRequest,
-    res: Response
-) => {
-    try {
-        const dashboard = await getWarehouseDashboard();
         return res.status(200).json({ success: true, data: dashboard });
     } catch (error) {
         return handleError(res, error);

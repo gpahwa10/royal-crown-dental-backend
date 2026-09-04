@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PAYMENT_METHODS } from "../billing/billing.constants";
+import { paymentMethodSchema } from "../billing/billing.validation";
 import {
     MEMBERSHIP_DISCOUNT_TYPES,
     PATIENT_MEMBERSHIP_STATUSES,
@@ -67,7 +67,7 @@ export const purchasePatientMembershipSchema = z.object({
 
 export const completeMembershipPaymentSchema = z.object({
     amount: z.coerce.number().int().positive(),
-    paymentMethod: z.enum(PAYMENT_METHODS),
+    paymentMethod: paymentMethodSchema,
     paymentReference: z.string().trim().optional(),
     paymentDate: z.coerce.date().optional(),
     notes: z.string().trim().optional(),

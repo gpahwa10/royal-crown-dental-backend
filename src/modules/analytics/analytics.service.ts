@@ -390,6 +390,9 @@ const getAlerts = async (scope: Scope): Promise<AlertItem[]> => {
                     eq(inventoryVariant.isActive, true),
                     eq(inventoryItem.isActive, true),
                     scope.clinicId
+                        ? eq(inventoryStock.clinicId, scope.clinicId)
+                        : undefined,
+                    scope.clinicId
                         ? or(
                               eq(inventoryItem.clinicId, scope.clinicId),
                               isNull(inventoryItem.clinicId)

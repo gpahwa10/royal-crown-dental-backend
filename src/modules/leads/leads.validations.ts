@@ -32,7 +32,7 @@ export const createLeadSchema = z.object({
 });
 
 export const createPublicLeadSchema = z.object({
-    clinicId: z.uuid(),
+    clinicId: z.uuid().optional(),
     name: z.string().trim().min(1),
     email: optionalEmail,
     phone: phoneSchema,

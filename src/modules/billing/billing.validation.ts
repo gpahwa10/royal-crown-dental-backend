@@ -3,7 +3,16 @@ import {
     INVOICE_SOURCE_TYPES,
     INVOICE_STATUSES,
     PAYMENT_METHODS,
+    normalizePaymentMethodInput,
 } from "./billing.constants";
+
+export const paymentMethodSchema = z
+    .string()
+    .transform((value) => {
+        const normalized = normalizePaymentMethodInput(value);
+        return typeof normalized === "string" ? normalized : value;
+    })
+    .pipe(z.enum(PAYMENT_METHODS));
 
 export const invoiceIdParamSchema = z.object({
     id: z.uuid(),
@@ -58,7 +67,7 @@ export const cancelInvoiceSchema = z
 
 export const createInvoicePaymentSchema = z.object({
     amount: z.coerce.number().int().positive(),
-    paymentMethod: z.enum(PAYMENT_METHODS),
+    paymentMethod: paymentMethodSchema,
     paymentReference: z.string().trim().optional(),
     paymentDate: z.coerce.date().optional(),
     notes: z.string().trim().optional(),

@@ -14,20 +14,11 @@ const main = async () => {
     console.log(`Variants:        ${result.variants}`);
     console.log(`Stock records:   ${result.stockRecords}`);
     console.log(`Clinics seeded:  ${result.clinicCount}`);
-    console.log(`Warehouse ID:    ${result.warehouseId}`);
-
-    console.log("\n--- Current stock sample data ---");
     console.log(
-        `Warehouse:       ${result.currentStock.warehouse.totalInStock} in stock / ${result.currentStock.warehouse.totalRequired} required (${result.currentStock.warehouse.records} records)`
+        `Stock totals:    ${result.currentStock.totalInStock} in stock / ${result.currentStock.totalRequired} required`
     );
     console.log(
-        `All clinics:     ${result.currentStock.clinics.totalInStock} in stock / ${result.currentStock.clinics.totalRequired} required (${result.currentStock.clinics.records} records)`
-    );
-    console.log(
-        `Seed transactions: ${result.currentStock.seedTransactions} (purchase + transfer)`
-    );
-    console.log(
-        "\nNote: Loaded from docs/data-migration-templates/YourVCare Master Data - Inventory Items.csv. Warehouse holds full quantities; each clinic holds ~30%."
+        "\nNote: Stock is clinic-scoped (no warehouse / locations / transfers)."
     );
 };
 

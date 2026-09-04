@@ -23,7 +23,22 @@ export const PAYMENT_METHODS = [
     "finance",
     "bank_transfer",
     "cheque",
+    "mpesa",
 ] as const;
+
+export const normalizePaymentMethodInput = (value: unknown): unknown => {
+    if (typeof value !== "string") {
+        return value;
+    }
+
+    const trimmed = value.trim().toLowerCase();
+    const compact = trimmed.replace(/[\s-_]/g, "");
+    if (compact === "mpesa") {
+        return "mpesa";
+    }
+
+    return trimmed;
+};
 
 export const INVOICE_NUMBER_PREFIX = "INV";
 export const INVOICE_NUMBER_PAD_LENGTH = 6;

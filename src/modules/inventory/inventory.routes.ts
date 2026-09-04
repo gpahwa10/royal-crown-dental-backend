@@ -10,36 +10,25 @@ import {
     consumeInventoryHandler,
     createCategoryHandler,
     createInventoryItemHandler,
-    createLocationHandler,
     createVariantHandler,
     deleteCategoryHandler,
     deleteInventoryItemHandler,
-    deleteLocationHandler,
     deleteVariantHandler,
     getCategoryHandler,
     getClinicInventoryDashboardHandler,
     getClinicStockHandler,
     getInventoryDashboardHandler,
     getInventoryItemHandler,
-    getItemHistoryHandler,
-    getLocationHandler,
     getLowStockHandler,
     getOutOfStockHandler,
     getStockSummaryHandler,
-    getTransactionHandler,
-    getWarehouseDashboardHandler,
-    getWarehouseStockHandler,
     listCategoriesHandler,
     listInventoryItemsHandler,
     listClinicInventoryItemsHandler,
-    listLocationsHandler,
     listStockHandler,
-    listTransactionsHandler,
     purchaseInventoryHandler,
-    transferInventoryHandler,
     updateCategoryHandler,
     updateInventoryItemHandler,
-    updateLocationHandler,
     updateVariantHandler,
 } from "./inventory.controller";
 
@@ -55,11 +44,8 @@ router.post(
     bulkCreateInventoryItemsHandler
 );
 
-// Paginated item GET APIs — query: ?page=1&limit=10 (&search, &categoryId, &clinicId, &clinicOnly, &isActive where supported)
 router.get("/items/clinic/:clinicId", listClinicInventoryItemsHandler);
 router.get("/items", listInventoryItemsHandler);
-router.get("/items/:id/history", getItemHistoryHandler); // query: ?page=1&limit=20
-
 router.get("/items/:id", getInventoryItemHandler);
 router.put(
     "/items/:id",
@@ -102,26 +88,7 @@ router.delete(
     deleteCategoryHandler
 );
 
-router.post(
-    "/locations",
-    requireInventoryManageAccess,
-    createLocationHandler
-);
-router.get("/locations", listLocationsHandler);
-router.get("/locations/:id", getLocationHandler);
-router.put(
-    "/locations/:id",
-    requireInventoryManageAccess,
-    updateLocationHandler
-);
-router.delete(
-    "/locations/:id",
-    requireInventoryManageAccess,
-    deleteLocationHandler
-);
-
 router.get("/stock/summary", getStockSummaryHandler);
-router.get("/stock/warehouse", getWarehouseStockHandler);
 router.get("/stock/clinic/:clinicId", getClinicStockHandler);
 router.get("/stock/low", getLowStockHandler);
 router.get("/stock/out", getOutOfStockHandler);
@@ -133,21 +100,12 @@ router.post(
     purchaseInventoryHandler
 );
 router.post(
-    "/transfer",
-    requireInventoryManageAccess,
-    transferInventoryHandler
-);
-router.post(
     "/consume",
     requireInventoryManageAccess,
     consumeInventoryHandler
 );
 router.post("/adjust", requireInventoryManageAccess, adjustInventoryHandler);
 
-router.get("/transactions", listTransactionsHandler);
-router.get("/transactions/:id", getTransactionHandler);
-
-router.get("/dashboard/warehouse", getWarehouseDashboardHandler);
 router.get("/dashboard/clinic/:clinicId", getClinicInventoryDashboardHandler);
 router.get("/dashboard", getInventoryDashboardHandler);
 

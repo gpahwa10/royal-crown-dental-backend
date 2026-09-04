@@ -58,7 +58,16 @@ export const createLeadHandler = async (req: AuthRequest, res: Response) => {
 export const createPublicLeadHandler = async (req: AuthRequest, res: Response) => {
     try {
         const body = createPublicLeadSchema.parse(req.body);
-        const lead = await createPublicLead(body);
+        const clinicId = req.clinicId;
+
+        if (!clinicId) {
+            return res.status(400).json({
+                success: false,
+                message: "clinicId is required",
+            });
+        }
+
+        const lead = await createPublicLead({ ...body, clinicId });
         return res.status(201).json({ success: true, data: lead });
     } catch (error) {
         return handleError(res, error);

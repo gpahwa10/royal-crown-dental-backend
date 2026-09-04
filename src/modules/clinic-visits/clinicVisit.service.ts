@@ -27,6 +27,7 @@ import { patientMemberships } from "../../db/schema/patientMemberships";
 import { patients } from "../../db/schema/patients";
 import { employeeRoles } from "../../db/schema/roles";
 import { ROLE_DOCTOR } from "../auth/auth.constants";
+import { PaymentMethod } from "../billing/billing.constants";
 import { createAppointment } from "../appointments/appointments.service";
 import {
     createConsultation,
@@ -742,13 +743,7 @@ export const createMembershipFromVisit = async (
         membershipPlanId: string;
         payment?: {
             amount: number;
-            paymentMethod:
-                | "cash"
-                | "upi"
-                | "card"
-                | "finance"
-                | "bank_transfer"
-                | "cheque";
+            paymentMethod: PaymentMethod;
             paymentReference?: string;
             paymentDate?: Date;
             notes?: string;

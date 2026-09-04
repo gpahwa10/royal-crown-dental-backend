@@ -6,6 +6,7 @@ import { membershipPlans } from "../../db/schema/membershipPlans";
 import { patientMemberships } from "../../db/schema/patientMemberships";
 import { patients } from "../../db/schema/patients";
 import { serviceCatalog } from "../../db/schema/serviceCatalog";
+import { PaymentMethod } from "../billing/billing.constants";
 import {
     createInvoice,
     recordInvoicePayment,
@@ -45,7 +46,7 @@ export interface PurchasePatientMembershipInput {
 
 export interface CompleteMembershipPaymentInput {
     amount: number;
-    paymentMethod: "cash" | "upi" | "card" | "finance" | "bank_transfer" | "cheque";
+    paymentMethod: PaymentMethod;
     paymentReference?: string;
     paymentDate?: Date;
     receivedBy?: string;

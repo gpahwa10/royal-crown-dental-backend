@@ -29,8 +29,6 @@ const NOT_FOUND_MESSAGES = new Set([
     "Inventory item not found",
     "Inventory variant not found",
     "Inventory category not found",
-    "Inventory location not found",
-    "Inventory transaction not found",
     "Stock record not found",
 ]);
 

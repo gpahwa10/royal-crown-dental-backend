@@ -12,9 +12,7 @@ import {
 import { db } from "../../db/client";
 import { inventoryCategory } from "../../db/schema/inventoryCategories";
 import { inventoryItem } from "../../db/schema/inventoryItems";
-import { inventoryLocation } from "../../db/schema/inventoryLocations";
 import { inventoryStock } from "../../db/schema/inventoryStocks";
-import { inventoryTransaction } from "../../db/schema/inventoryTransactions";
 import { inventoryVariant } from "../../db/schema/inventoryVariants";
 import { buildPaginationMeta, getPagination } from "./inventory.utils";
 
@@ -67,22 +65,6 @@ export interface UpdateCategoryInput {
     parentCategoryId?: string;
 }
 
-export interface CreateLocationInput {
-    name: string;
-    type: string;
-    city?: string;
-    address?: string;
-    clinicId?: string;
-}
-
-export interface UpdateLocationInput {
-    name?: string;
-    type?: string;
-    city?: string;
-    address?: string;
-    clinicId?: string;
-}
-
 export interface ListItemsOptions {
     page?: number;
     limit?: number;
@@ -113,11 +95,11 @@ const fetchCurrentStockByItemIds = async (
     }
 
     const stockSum = clinicId
-        ? sql<number>`coalesce(sum(case when ${inventoryLocation.clinicId} = ${clinicId} and ${inventoryLocation.isActive} = true then ${inventoryStock.inStock} else 0 end), 0)`
+        ? sql<number>`coalesce(sum(case when ${inventoryStock.clinicId} = ${clinicId} then ${inventoryStock.inStock} else 0 end), 0)`
         : sql<number>`coalesce(sum(${inventoryStock.inStock}), 0)`;
 
     const reservedSum = clinicId
-        ? sql<number>`coalesce(sum(case when ${inventoryLocation.clinicId} = ${clinicId} and ${inventoryLocation.isActive} = true then ${inventoryStock.reservedStock} else 0 end), 0)`
+        ? sql<number>`coalesce(sum(case when ${inventoryStock.clinicId} = ${clinicId} then ${inventoryStock.reservedStock} else 0 end), 0)`
         : sql<number>`coalesce(sum(${inventoryStock.reservedStock}), 0)`;
 
     const rows = await db
@@ -134,10 +116,6 @@ const fetchCurrentStockByItemIds = async (
         .leftJoin(
             inventoryStock,
             eq(inventoryStock.variantId, inventoryVariant.id)
-        )
-        .leftJoin(
-            inventoryLocation,
-            eq(inventoryStock.locationId, inventoryLocation.id)
         )
         .where(
             and(
@@ -453,33 +431,22 @@ export const getInventoryItemById = async (
     const stockRows =
         variantIds.length > 0
             ? await db
-                  .select({
-                      stock: inventoryStock,
-                      location: inventoryLocation,
-                  })
+                  .select()
                   .from(inventoryStock)
-                  .innerJoin(
-                      inventoryLocation,
-                      eq(inventoryStock.locationId, inventoryLocation.id)
-                  )
                   .where(
                       options?.clinicId
                           ? and(
                                 inArray(inventoryStock.variantId, variantIds),
-                                eq(inventoryLocation.clinicId, options.clinicId),
-                                eq(inventoryLocation.isActive, true)
+                                eq(inventoryStock.clinicId, options.clinicId)
                             )
                           : inArray(inventoryStock.variantId, variantIds)
                   )
             : [];
 
     const variantsWithStock = variants.map((variant) => {
-        const variantStock = stockRows
-            .filter((row) => row.stock.variantId === variant.id)
-            .map((row) => ({
-                ...row.stock,
-                location: row.location,
-            }));
+        const variantStock = stockRows.filter(
+            (row) => row.variantId === variant.id
+        );
         const totalInStock = variantStock.reduce(
             (sum, stock) => sum + stock.inStock,
             0
@@ -522,59 +489,6 @@ export const getInventoryItemById = async (
             totalReserved,
             lowStockVariants,
         },
-    };
-};
-
-export const getItemHistory = async (
-    id: string,
-    options: { page?: number; limit?: number } = {}
-) => {
-    const { page, limit, offset } = getPagination(options.page, options.limit);
-
-    const [item] = await db
-        .select({ id: inventoryItem.id })
-        .from(inventoryItem)
-        .where(eq(inventoryItem.id, id));
-
-    if (!item) {
-        throw new Error("Inventory item not found");
-    }
-
-    const variants = await db
-        .select({ id: inventoryVariant.id })
-        .from(inventoryVariant)
-        .where(eq(inventoryVariant.inventoryItemId, id));
-
-    if (variants.length === 0) {
-        return {
-            items: [],
-            pagination: buildPaginationMeta(page, limit, 0),
-        };
-    }
-
-    const variantFilter = inArray(
-        inventoryTransaction.variantId,
-        variants.map((variant) => variant.id)
-    );
-
-    const [countResult] = await db
-        .select({ value: count() })
-        .from(inventoryTransaction)
-        .where(variantFilter);
-
-    const total = Number(countResult.value);
-
-    const items = await db
-        .select()
-        .from(inventoryTransaction)
-        .where(variantFilter)
-        .orderBy(desc(inventoryTransaction.createdAt))
-        .limit(limit)
-        .offset(offset);
-
-    return {
-        items,
-        pagination: buildPaginationMeta(page, limit, total),
     };
 };
 
@@ -729,92 +643,6 @@ export const deleteCategory = async (id: string) => {
     return category;
 };
 
-export const createLocation = async (input: CreateLocationInput) => {
-    const [location] = await db
-        .insert(inventoryLocation)
-        .values(input)
-        .returning();
-
-    return location;
-};
-
-export const listLocations = async () => {
-    return db
-        .select()
-        .from(inventoryLocation)
-        .where(eq(inventoryLocation.isActive, true))
-        .orderBy(inventoryLocation.name);
-};
-
-export const getLocationById = async (id: string) => {
-    const [location] = await db
-        .select()
-        .from(inventoryLocation)
-        .where(
-            and(
-                eq(inventoryLocation.id, id),
-                eq(inventoryLocation.isActive, true)
-            )
-        );
-
-    if (!location) {
-        throw new Error("Inventory location not found");
-    }
-
-    return location;
-};
-
-export const updateLocation = async (
-    id: string,
-    input: UpdateLocationInput
-) => {
-    const [existing] = await db
-        .select({ id: inventoryLocation.id })
-        .from(inventoryLocation)
-        .where(
-            and(
-                eq(inventoryLocation.id, id),
-                eq(inventoryLocation.isActive, true)
-            )
-        );
-
-    if (!existing) {
-        throw new Error("Inventory location not found");
-    }
-
-    const [location] = await db
-        .update(inventoryLocation)
-        .set({ ...input, updatedAt: new Date() })
-        .where(eq(inventoryLocation.id, id))
-        .returning();
-
-    return location;
-};
-
-export const deleteLocation = async (id: string) => {
-    const [existing] = await db
-        .select({ id: inventoryLocation.id })
-        .from(inventoryLocation)
-        .where(
-            and(
-                eq(inventoryLocation.id, id),
-                eq(inventoryLocation.isActive, true)
-            )
-        );
-
-    if (!existing) {
-        throw new Error("Inventory location not found");
-    }
-
-    const [location] = await db
-        .update(inventoryLocation)
-        .set({ isActive: false, updatedAt: new Date() })
-        .where(eq(inventoryLocation.id, id))
-        .returning();
-
-    return location;
-};
-
 export const countActiveInventoryItems = async () => {
     const [result] = await db
         .select({ value: count() })
@@ -824,21 +652,7 @@ export const countActiveInventoryItems = async () => {
     return Number(result.value);
 };
 
-export const countActiveClinicLocations = async () => {
-    const [result] = await db
-        .select({ value: count() })
-        .from(inventoryLocation)
-        .where(
-            and(
-                eq(inventoryLocation.isActive, true),
-                eq(inventoryLocation.type, "clinic")
-            )
-        );
-
-    return Number(result.value);
-};
-
-export const countLowStockItems = async () => {
+export const countLowStockItems = async (clinicId?: string) => {
     const [result] = await db
         .select({ value: count() })
         .from(inventoryStock)
@@ -854,6 +668,7 @@ export const countLowStockItems = async () => {
             and(
                 eq(inventoryVariant.isActive, true),
                 eq(inventoryItem.isActive, true),
+                clinicId ? eq(inventoryStock.clinicId, clinicId) : undefined,
                 sql`${inventoryStock.inStock} < COALESCE(NULLIF(${inventoryStock.requiredStock}, 0), ${inventoryItem.minimumStockLevel})`
             )
         );
@@ -861,7 +676,7 @@ export const countLowStockItems = async () => {
     return Number(result.value);
 };
 
-export const countOutOfStockItems = async () => {
+export const countOutOfStockItems = async (clinicId?: string) => {
     const [result] = await db
         .select({ value: count() })
         .from(inventoryStock)
@@ -872,7 +687,8 @@ export const countOutOfStockItems = async () => {
         .where(
             and(
                 eq(inventoryVariant.isActive, true),
-                eq(inventoryStock.inStock, 0)
+                eq(inventoryStock.inStock, 0),
+                clinicId ? eq(inventoryStock.clinicId, clinicId) : undefined
             )
         );
 

@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { LOCATION_TYPES, TRANSACTION_TYPES } from "./inventory.constants";
 
 const variantSchema = z.object({
     name: z.string().min(1),
@@ -43,11 +42,6 @@ export const getInventoryItemQuerySchema = z.object({
     clinicId: z.uuid().optional(),
 });
 
-export const itemHistoryQuerySchema = z.object({
-    page: z.coerce.number().int().min(1).default(1),
-    limit: z.coerce.number().int().min(1).max(100).default(20),
-});
-
 export const listInventoryItemsQuerySchema = z.object({
     page: z.coerce.number().int().min(1).default(1),
     limit: z.coerce.number().int().min(1).max(100).default(10),
@@ -61,7 +55,9 @@ export const listInventoryItemsQuerySchema = z.object({
     isActive: z
         .enum(["true", "false"])
         .optional()
-        .transform((value) => (value === undefined ? undefined : value === "true")),
+        .transform((value) =>
+            value === undefined ? undefined : value === "true"
+        ),
 });
 
 export const createVariantSchema = z.object({
@@ -103,30 +99,6 @@ export const categoryParamsSchema = z.object({
     id: z.uuid(),
 });
 
-export const createLocationSchema = z.object({
-    name: z.string().min(1),
-    type: z.enum([LOCATION_TYPES.CLINIC, LOCATION_TYPES.WAREHOUSE]),
-    city: z.string().optional(),
-    address: z.string().optional(),
-    clinicId: z.uuid().optional(),
-});
-
-export const updateLocationSchema = z
-    .object({
-        name: z.string().min(1).optional(),
-        type: z.enum([LOCATION_TYPES.CLINIC, LOCATION_TYPES.WAREHOUSE]).optional(),
-        city: z.string().optional(),
-        address: z.string().optional(),
-        clinicId: z.uuid().optional(),
-    })
-    .refine((data) => Object.keys(data).length > 0, {
-        message: "At least one field is required",
-    });
-
-export const locationParamsSchema = z.object({
-    id: z.uuid(),
-});
-
 export const clinicParamsSchema = z.object({
     clinicId: z.uuid(),
 });
@@ -137,7 +109,6 @@ export const listStockQuerySchema = z.object({
     search: z.string().optional(),
     categoryId: z.uuid().optional(),
     clinicId: z.uuid().optional(),
-    locationId: z.uuid().optional(),
     lowStock: z
         .enum(["true", "false"])
         .optional()
@@ -155,25 +126,14 @@ const stockTargetSchema = z
 
 export const purchaseInventorySchema = stockTargetSchema.and(
     z.object({
-        locationId: z.uuid(),
         quantity: z.number().int().positive(),
         referenceNumber: z.string().optional(),
         notes: z.string().optional(),
     })
 );
 
-export const transferInventorySchema = stockTargetSchema.and(
-    z.object({
-        fromLocationId: z.uuid(),
-        toLocationId: z.uuid(),
-        quantity: z.number().int().positive(),
-        notes: z.string().optional(),
-    })
-);
-
 export const consumeInventorySchema = stockTargetSchema.and(
     z.object({
-        locationId: z.uuid(),
         quantity: z.number().int().positive(),
         notes: z.string().optional(),
     })
@@ -181,34 +141,9 @@ export const consumeInventorySchema = stockTargetSchema.and(
 
 export const adjustInventorySchema = stockTargetSchema.and(
     z.object({
-        locationId: z.uuid(),
         adjustment: z.number().int().refine((value) => value !== 0, {
             message: "Adjustment cannot be zero",
         }),
         reason: z.string().min(1),
     })
 );
-
-export const listTransactionsQuerySchema = z.object({
-    page: z.coerce.number().int().min(1).default(1),
-    limit: z.coerce.number().int().min(1).max(100).default(20),
-    type: z
-        .enum([
-            TRANSACTION_TYPES.PURCHASE,
-            TRANSACTION_TYPES.TRANSFER,
-            TRANSACTION_TYPES.USAGE,
-            TRANSACTION_TYPES.ADJUSTMENT,
-            TRANSACTION_TYPES.DAMAGED,
-            TRANSACTION_TYPES.EXPIRED,
-            TRANSACTION_TYPES.RETURN,
-        ])
-        .optional(),
-    locationId: z.uuid().optional(),
-    variantId: z.uuid().optional(),
-    startDate: z.coerce.date().optional(),
-    endDate: z.coerce.date().optional(),
-});
-
-export const transactionParamsSchema = z.object({
-    id: z.uuid(),
-});

@@ -16,6 +16,7 @@ export const paymentMethodEnum = pgEnum("payment_method", [
     "finance",
     "bank_transfer",
     "cheque",
+    "mpesa",
 ]);
 
 export const payments = pgTable("payments", {
