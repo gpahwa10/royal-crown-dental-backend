@@ -27,9 +27,15 @@ export const invoiceLineItemSchema = z
         serviceId: z.uuid().optional(),
         serviceName: z.string().trim().min(1).optional(),
         quantity: z.coerce.number().int().min(1).default(1),
-        unitPrice: z.coerce.number().int().min(0),
+        unitPrice: z.coerce.number().int().min(0).optional(),
+        price: z.coerce.number().int().min(0).optional(),
+        discountAmount: z.coerce.number().int().min(0).optional().default(0),
         taxPercentage: z.coerce.number().int().min(0).max(100).optional().default(0),
     })
+    .transform((data) => ({
+        ...data,
+        unitPrice: data.unitPrice ?? data.price ?? 0,
+    }))
     .refine((data) => data.serviceId || data.serviceName, {
         message: "Either serviceId or serviceName must be provided",
     });

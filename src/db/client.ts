@@ -14,6 +14,9 @@ const isLocalhost =
 
 const pool = new Pool({
     connectionString,
+    max: 5,
+    idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: 10_000,
     ...(isLocalhost
         ? {}
         : {

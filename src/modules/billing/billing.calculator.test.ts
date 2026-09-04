@@ -85,4 +85,40 @@ describe("calculateInvoiceLines", () => {
         expect(result.manualDiscount).toBe(100);
         expect(result.grandTotal).toBe(2900);
     });
+
+    it("supports distinct manual pricing and discounts per service item", () => {
+        const result = calculateInvoiceLines(
+            [
+                {
+                    serviceId: serviceA.serviceId,
+                    quantity: 1,
+                    unitPrice: 8000,
+                    discountAmount: 1000,
+                    taxPercentage: 0,
+                },
+                {
+                    serviceId: serviceB.serviceId,
+                    quantity: 2,
+                    price: 2500,
+                    discountAmount: 500,
+                    taxPercentage: 0,
+                },
+            ],
+            [serviceA, serviceB],
+            new Map(),
+            200
+        );
+
+        expect(result.lines[0]?.unitPrice).toBe(8000);
+        expect(result.lines[0]?.discountAmount).toBe(1000);
+        expect(result.lines[0]?.lineTotal).toBe(7000);
+
+        expect(result.lines[1]?.unitPrice).toBe(2500);
+        expect(result.lines[1]?.discountAmount).toBe(500);
+        expect(result.lines[1]?.lineTotal).toBe(4500);
+
+        expect(result.subtotal).toBe(13000);
+        expect(result.manualDiscount).toBe(1700); // 1500 per-item discounts + 200 invoice manual discount
+        expect(result.grandTotal).toBe(11300);
+    });
 });
