@@ -52,6 +52,7 @@ curl -X POST "${BASE_URL}/api/auth/login" \
 #   "name": "Rahul Sharma",
 #   "phone": "9876543210",
 #   "email": "rahul@example.com",
+#   "doctorId": "doctor-employee-uuid",
 #   "gender": "Male",
 #   "dateOfBirth": "1990-05-15",
 #   "address": "Shop 12, Link Road, Andheri West, Mumbai",
@@ -70,6 +71,7 @@ curl -X POST "${BASE_URL}/api/auth/login" \
 #       "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
 #       "patientCode": "PAT000042",
 #       "clinicId": "clinic-uuid",
+#       "doctorId": "doctor-employee-uuid",
 #       "patientType": "existing",
 #       "name": "Rahul Sharma",
 #       "phone": "9876543210",
@@ -126,6 +128,7 @@ curl -X PATCH "${PATIENTS}/${PATIENT_ID}/basic-details" \
     "name": "Rahul Sharma",
     "phone": "9876543210",
     "email": "rahul@example.com",
+    "doctorId": "doctor-employee-uuid",
     "gender": "Male",
     "dateOfBirth": "1990-05-15",
     "address": "Shop 12, Link Road, Andheri West, Mumbai",
@@ -142,6 +145,21 @@ curl -X PATCH "${PATIENTS}/${PATIENT_ID}/basic-details" \
   -d '{
     "phone": "9900112233",
     "address": "2nd Floor, S V Road, Borivali West"
+  }'
+
+# Assign or unassign the patient doctor:
+curl -X PATCH "${PATIENTS}/${PATIENT_ID}/basic-details" \
+  -H "${AUTH_HEADER}" \
+  -H "${JSON_HEADER}" \
+  -d '{
+    "doctorId": "doctor-employee-uuid"
+  }'
+
+curl -X PATCH "${PATIENTS}/${PATIENT_ID}/basic-details" \
+  -H "${AUTH_HEADER}" \
+  -H "${JSON_HEADER}" \
+  -d '{
+    "doctorId": null
   }'
 
 

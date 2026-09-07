@@ -198,6 +198,19 @@ const buildClinicItemFilter = (clinicId: string, clinicOnly?: boolean) =>
               isNull(inventoryItem.clinicId)
           );
 
+const buildDuplicateSkuFilter = (sku: string, clinicId?: string | null) =>
+    clinicId
+        ? and(
+              eq(inventoryItem.sku, sku),
+              eq(inventoryItem.clinicId, clinicId),
+              eq(inventoryItem.isActive, true)
+          )
+        : and(
+              eq(inventoryItem.sku, sku),
+              isNull(inventoryItem.clinicId),
+              eq(inventoryItem.isActive, true)
+          );
+
 const createItemWithVariants = async (
     input: CreateInventoryInput,
     tx: Parameters<Parameters<typeof db.transaction>[0]>[0]
@@ -225,6 +238,17 @@ const createItemWithVariants = async (
 
     if (duplicate) {
         throw new Error("An inventory item with this name already exists");
+    }
+
+    if (sku) {
+        const [duplicateSku] = await tx
+            .select({ id: inventoryItem.id })
+            .from(inventoryItem)
+            .where(buildDuplicateSkuFilter(sku, itemData.clinicId ?? null));
+
+        if (duplicateSku) {
+            throw new Error("An inventory item with this item ID already exists");
+        }
     }
 
     const normalizedVariants =
@@ -271,12 +295,26 @@ export const updateInventoryItem = async (
     input: UpdateInventoryInput
 ) => {
     const [existing] = await db
-        .select({ id: inventoryItem.id })
+        .select({
+            id: inventoryItem.id,
+            clinicId: inventoryItem.clinicId,
+        })
         .from(inventoryItem)
         .where(and(eq(inventoryItem.id, id), eq(inventoryItem.isActive, true)));
 
     if (!existing) {
         throw new Error("Inventory item not found");
+    }
+
+    if (input.sku) {
+        const [duplicateSku] = await db
+            .select({ id: inventoryItem.id })
+            .from(inventoryItem)
+            .where(buildDuplicateSkuFilter(input.sku, existing.clinicId ?? null));
+
+        if (duplicateSku && duplicateSku.id !== id) {
+            throw new Error("An inventory item with this item ID already exists");
+        }
     }
 
     const [item] = await db

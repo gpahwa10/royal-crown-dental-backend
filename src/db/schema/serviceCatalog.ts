@@ -25,10 +25,6 @@ export const serviceCatalog = pgTable(
 
         // defaultPrice: integer("default_price").default(0).notNull(),
 
-        taxPercentage: integer("tax_percentage").default(0).notNull(),
-
-        isTaxable: boolean("is_taxable").default(false).notNull(),
-
         isActive: boolean("is_active").default(true).notNull(),
 
         clinicId: uuid("clinic_id")
