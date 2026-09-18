@@ -9,6 +9,7 @@ import {
     uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { clinics } from "./clinic";
+import { employees } from "./employees";
 
 export const patientTypeEnum = pgEnum("patient_type", ["new", "existing"]);
 
@@ -26,6 +27,9 @@ export const patients = pgTable(
         clinicId: uuid("clinic_id")
             .references(() => clinics.id, { onDelete: "cascade" })
             .notNull(),
+        doctorId: uuid("doctor_id").references(() => employees.id, {
+            onDelete: "set null",
+        }),
         patientType: patientTypeEnum("patient_type").notNull().default("new"),
         name: varchar("name", { length: 255 }).notNull(),
         phone: varchar("phone", { length: 20 }).notNull(),

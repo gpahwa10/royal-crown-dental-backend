@@ -10,9 +10,13 @@ import { db } from "../../db/client";
 import { appointments } from "../../db/schema/appointments";
 import { clinics } from "../../db/schema/clinic";
 import { consultations } from "../../db/schema/consultations";
+import { employeeRoleAssignments } from "../../db/schema/employeeRoleAssignments";
+import { employees } from "../../db/schema/employees";
 import { patientConsents } from "../../db/schema/patientConsents";
 import { patientMedicalProfiles } from "../../db/schema/patientMedicalProfiles";
 import { patients } from "../../db/schema/patients";
+import { employeeRoles } from "../../db/schema/roles";
+import { ROLE_DOCTOR } from "../auth/auth.constants";
 import { listConsultationsByPatientId } from "../consultations/consultations.service";
 import {
     DentalLabOrderPatientSummary,
@@ -68,6 +72,7 @@ export interface RegisterPatientInput {
     name: string;
     phone: string;
     email?: string;
+    doctorId?: string;
     gender: string;
     dateOfBirth: Date | string;
     address?: string;
@@ -100,6 +105,7 @@ export interface UpdatePatientBasicDetailsInput {
     name?: string;
     phone?: string;
     email?: string | null;
+    doctorId?: string | null;
     gender?: string;
     dateOfBirth?: Date | string;
     address?: string | null;
@@ -208,6 +214,32 @@ const getPatientRecord = async (id: string) => {
     return patient;
 };
 
+const assertDoctorInClinic = async (doctorId: string, clinicId: string) => {
+    const [doctor] = await db
+        .select({ id: employees.id })
+        .from(employees)
+        .innerJoin(
+            employeeRoleAssignments,
+            eq(employeeRoleAssignments.employeeId, employees.id)
+        )
+        .innerJoin(
+            employeeRoles,
+            eq(employeeRoleAssignments.roleId, employeeRoles.id)
+        )
+        .where(
+            and(
+                eq(employees.id, doctorId),
+                eq(employeeRoles.name, ROLE_DOCTOR),
+                eq(employees.clinicId, clinicId),
+                eq(employees.isActive, true)
+            )
+        );
+
+    if (!doctor) {
+        throw new Error("Doctor not found");
+    }
+};
+
 /** Lightweight patient lookup for access checks and simple updates. */
 export const getPatientById = async (id: string) => getPatientRecord(id);
 
@@ -283,6 +315,9 @@ const buildTimeline = (
 export const registerPatient = async (input: RegisterPatientInput) => {
     await assertClinicExists(input.clinicId);
     await assertDuplicatePhone(input.phone, input.clinicId);
+    if (input.doctorId) {
+        await assertDoctorInClinic(input.doctorId, input.clinicId);
+    }
 
     if (input.email) {
         const [existingEmail] = await db
@@ -305,6 +340,7 @@ export const registerPatient = async (input: RegisterPatientInput) => {
             .values({
                 patientCode,
                 clinicId: input.clinicId,
+                doctorId: input.doctorId,
                 patientType: input.patientType,
                 name: input.name,
                 phone: input.phone,
@@ -657,12 +693,17 @@ export const updatePatientBasicDetails = async (
         }
     }
 
+    if (input.doctorId) {
+        await assertDoctorInClinic(input.doctorId, patient.clinicId);
+    }
+
     const [updatedPatient] = await db
         .update(patients)
         .set({
             ...(input.name !== undefined && { name: input.name }),
             ...(input.phone !== undefined && { phone: input.phone }),
             ...(input.email !== undefined && { email: input.email }),
+            ...(input.doctorId !== undefined && { doctorId: input.doctorId }),
             ...(input.gender !== undefined && { gender: input.gender }),
             ...(input.dateOfBirth !== undefined && {
                 dateOfBirth: toDate(input.dateOfBirth) ?? patient.dateOfBirth,
