@@ -14,6 +14,7 @@ import {
     getConsultationOdontogramHandler,
     initializeConsultationOdontogramHandler,
     updateConsultationOdontogramHandler,
+    updateConsultationToothNotesHandler,
 } from "../odontograms/odontograms.controller";
 
 const router = Router();
@@ -30,8 +31,16 @@ router.post("/:id/prescription", createConsultationPrescriptionHandler);
 router.post("/:id/odontogram/initialize", initializeConsultationOdontogramHandler);
 router.get("/:id/odontogram", getConsultationOdontogramHandler);
 router.put("/:id/odontogram", updateConsultationOdontogramHandler);
+router.patch(
+    "/:id/odontogram/teeth/:toothNumber/notes",
+    updateConsultationToothNotesHandler
+);
 router.post("/:consultationId/odontogram/initialize", initializeConsultationOdontogramHandler);
 router.get("/:consultationId/odontogram", getConsultationOdontogramHandler);
 router.put("/:consultationId/odontogram", updateConsultationOdontogramHandler);
+router.patch(
+    "/:consultationId/odontogram/teeth/:toothNumber/notes",
+    updateConsultationToothNotesHandler
+);
 
 export default router;

@@ -11,6 +11,7 @@ import {
     OdontogramErrorCode,
     PatientOdontogramData,
     UpdateConsultationOdontogramInput,
+    UpdateToothNotesInput,
 } from "./odontograms.types";
 
 export class OdontogramError extends Error {
@@ -463,6 +464,103 @@ export const updateConsultationOdontogram = async (
         createdAt: updated.createdAt,
         updatedAt: updated.updatedAt,
     };
+};
+
+const asToothEntry = (value: unknown): Record<string, unknown> => {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+        return { ...(value as Record<string, unknown>) };
+    }
+    if (value === undefined || value === null) {
+        return {};
+    }
+    return { value };
+};
+
+/**
+ * Patch notes on a single tooth in the consultation status chart.
+ * Notes are stored as statusChart[toothNumber].notes and flow to the
+ * patient chart when the consultation is completed / finalized.
+ */
+export const updateConsultationToothNotes = async (
+    consultationId: string,
+    input: UpdateToothNotesInput,
+    clinicId: string,
+    userId: string
+): Promise<ConsultationOdontogramData> => {
+    const [consultation] = await db
+        .select()
+        .from(consultations)
+        .where(eq(consultations.id, consultationId));
+
+    if (!consultation) {
+        throw new OdontogramError(
+            "ODONTOGRAM_CONSULTATION_NOT_FOUND",
+            "Consultation not found",
+            404
+        );
+    }
+
+    if (consultation.clinicId !== clinicId) {
+        throw new OdontogramError(
+            "ODONTOGRAM_UNAUTHORIZED",
+            "You cannot access consultations from another clinic",
+            403
+        );
+    }
+
+    if (consultation.status === "cancelled") {
+        throw new OdontogramError(
+            "ODONTOGRAM_NOT_EDITABLE",
+            "Cannot edit odontogram for cancelled consultation",
+            409
+        );
+    }
+
+    const [current] = await db
+        .select()
+        .from(consultationOdontograms)
+        .where(eq(consultationOdontograms.consultationId, consultationId));
+
+    if (!current) {
+        throw new OdontogramError(
+            "ODONTOGRAM_NOT_FOUND",
+            "Consultation odontogram has not been initialized",
+            404
+        );
+    }
+
+    if (input.version !== current.chartVersion) {
+        throw new OdontogramError(
+            "ODONTOGRAM_VERSION_CONFLICT",
+            "The dental chart was updated by another user. Reload the latest chart before saving again.",
+            409
+        );
+    }
+
+    const previousTooth = asToothEntry(current.statusChart[input.toothNumber]);
+    const nextTooth = { ...previousTooth };
+
+    if (input.notes === null) {
+        delete nextTooth.notes;
+    } else {
+        nextTooth.notes = input.notes;
+    }
+
+    const nextStatusChart: Record<string, unknown> = {
+        ...current.statusChart,
+        [input.toothNumber]: nextTooth,
+    };
+
+    return updateConsultationOdontogram(
+        consultationId,
+        {
+            statusChart: nextStatusChart,
+            planChart: current.planChart ?? {},
+            version: input.version,
+        },
+        clinicId,
+        userId
+    );
 };
 
 export const finalizeConsultationOdontogram = async (

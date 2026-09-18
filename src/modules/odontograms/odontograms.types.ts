@@ -7,6 +7,11 @@ export type OdontogramErrorCode =
     | "ODONTOGRAM_UNAUTHORIZED"
     | "ODONTOGRAM_INVALID_STATE";
 
+/** Per-tooth chart entry. Clients may store condition/procedure fields; notes is optional. */
+export type OdontogramToothEntry = Record<string, unknown> & {
+    notes?: string | null;
+};
+
 export interface PatientOdontogramData {
     id?: string;
     patientId: string;
@@ -34,6 +39,12 @@ export interface ConsultationOdontogramData {
 export interface UpdateConsultationOdontogramInput {
     statusChart: Record<string, unknown>;
     planChart?: Record<string, unknown> | null;
+    version: number;
+}
+
+export interface UpdateToothNotesInput {
+    toothNumber: string;
+    notes: string | null;
     version: number;
 }
 

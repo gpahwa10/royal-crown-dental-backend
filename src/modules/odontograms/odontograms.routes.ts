@@ -5,6 +5,7 @@ import {
     getPatientOdontogramHandler,
     initializeConsultationOdontogramHandler,
     updateConsultationOdontogramHandler,
+    updateConsultationToothNotesHandler,
 } from "./odontograms.controller";
 
 export const patientOdontogramsRouter = Router();
@@ -25,6 +26,10 @@ consultationOdontogramsRouter.put(
     "/:consultationId/odontogram",
     updateConsultationOdontogramHandler
 );
+consultationOdontogramsRouter.patch(
+    "/:consultationId/odontogram/teeth/:toothNumber/notes",
+    updateConsultationToothNotesHandler
+);
 
 const defaultRouter = Router();
 defaultRouter.use(authenticate);
@@ -43,6 +48,10 @@ defaultRouter.get(
 defaultRouter.put(
     "/consultations/:consultationId/odontogram",
     updateConsultationOdontogramHandler
+);
+defaultRouter.patch(
+    "/consultations/:consultationId/odontogram/teeth/:toothNumber/notes",
+    updateConsultationToothNotesHandler
 );
 
 export default defaultRouter;

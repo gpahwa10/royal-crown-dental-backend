@@ -29,3 +29,22 @@ export const updateConsultationOdontogramSchema = z.object({
     planChart: z.record(z.string(), z.unknown()).nullable().optional(),
     version: z.number().int().positive(),
 });
+
+export const toothNumberParamSchema = z.object({
+    toothNumber: z
+        .string()
+        .trim()
+        .min(1)
+        .max(10)
+        .regex(/^[0-9A-Za-z]+$/, "toothNumber must be alphanumeric"),
+});
+
+export const updateToothNotesSchema = z.object({
+    notes: z
+        .string()
+        .trim()
+        .max(2000)
+        .nullable()
+        .transform((value) => (value === "" ? null : value)),
+    version: z.number().int().positive(),
+});

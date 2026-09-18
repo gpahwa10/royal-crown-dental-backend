@@ -14,11 +14,14 @@ import {
     initializeConsultationOdontogram,
     OdontogramError,
     updateConsultationOdontogram,
+    updateConsultationToothNotes,
 } from "./odontograms.service";
 import {
     consultationIdParamSchema,
     patientIdParamSchema,
+    toothNumberParamSchema,
     updateConsultationOdontogramSchema,
+    updateToothNotesSchema,
 } from "./odontograms.validation";
 
 export const handleOdontogramError = (res: Response, error: unknown) => {
@@ -227,6 +230,76 @@ export const updateConsultationOdontogramHandler = async (
         return res.status(200).json({
             success: true,
             odontogram,
+        });
+    } catch (error) {
+        return handleOdontogramError(res, error);
+    }
+};
+
+export const updateConsultationToothNotesHandler = async (
+    req: AuthRequest,
+    res: Response
+) => {
+    try {
+        const { consultationId } = consultationIdParamSchema.parse(req.params);
+        const { toothNumber } = toothNumberParamSchema.parse(req.params);
+        const body = updateToothNotesSchema.parse(req.body);
+        const clinicId = req.clinicId;
+        const userId = req.employee?.id;
+
+        if (!clinicId || !userId) {
+            return res.status(400).json({
+                success: false,
+                error: {
+                    code: "ODONTOGRAM_UNAUTHORIZED",
+                    message: "Authentication context is required",
+                },
+                message: "Authentication context is required",
+            });
+        }
+
+        if (!canModifyOdontogram(req)) {
+            return res.status(403).json({
+                success: false,
+                error: {
+                    code: "ODONTOGRAM_UNAUTHORIZED",
+                    message:
+                        "You are not authorized to update consultation odontograms",
+                },
+                message:
+                    "You are not authorized to update consultation odontograms",
+            });
+        }
+
+        const odontogram = await updateConsultationToothNotes(
+            consultationId,
+            {
+                toothNumber,
+                notes: body.notes,
+                version: body.version,
+            },
+            clinicId,
+            userId
+        );
+
+        const toothEntry = odontogram.statusChart[toothNumber];
+        const notes =
+            toothEntry &&
+            typeof toothEntry === "object" &&
+            toothEntry !== null
+                ? ((toothEntry as Record<string, unknown>).notes as
+                      | string
+                      | null
+                      | undefined) ?? null
+                : null;
+
+        return res.status(200).json({
+            success: true,
+            odontogram,
+            tooth: {
+                toothNumber,
+                notes,
+            },
         });
     } catch (error) {
         return handleOdontogramError(res, error);
