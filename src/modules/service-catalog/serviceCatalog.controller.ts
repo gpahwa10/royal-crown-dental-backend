@@ -70,6 +70,7 @@ export const listServiceCatalogHandler = async (
             search: query.search,
             category: query.category,
             isActive: query.isActive,
+            all: query.all,
         });
 
         return res.status(200).json({ success: true, data: result });

@@ -1,4 +1,5 @@
 import { and, desc, eq } from "drizzle-orm";
+import { appConfig } from "../../config/app.config";
 import { db } from "../../db/client";
 import { invoices } from "../../db/schema/invoices";
 import { membershipPlanBenefits } from "../../db/schema/membershipPlanBenefits";
@@ -137,10 +138,31 @@ export const listMembershipPlans = async () =>
 
 export const getMembershipPlanById = async (id: string) => {
     const plan = await getMembershipPlanRecord(id);
+    const clinicId = appConfig.clinicId;
+
     const benefits = await db
-        .select()
+        .select({
+            id: membershipPlanBenefits.id,
+            membershipPlanId: membershipPlanBenefits.membershipPlanId,
+            serviceCode: membershipPlanBenefits.serviceCode,
+            discountType: membershipPlanBenefits.discountType,
+            discountValue: membershipPlanBenefits.discountValue,
+            createdAt: membershipPlanBenefits.createdAt,
+            serviceName: serviceCatalog.serviceName,
+            category: serviceCatalog.category,
+            serviceId: serviceCatalog.id,
+            serviceIsActive: serviceCatalog.isActive,
+        })
         .from(membershipPlanBenefits)
-        .where(eq(membershipPlanBenefits.membershipPlanId, id));
+        .leftJoin(
+            serviceCatalog,
+            and(
+                eq(serviceCatalog.serviceCode, membershipPlanBenefits.serviceCode),
+                eq(serviceCatalog.clinicId, clinicId)
+            )
+        )
+        .where(eq(membershipPlanBenefits.membershipPlanId, id))
+        .orderBy(desc(membershipPlanBenefits.createdAt));
 
     return { plan, benefits };
 };
@@ -179,11 +201,23 @@ export const createMembershipBenefit = async (
     await getMembershipPlanRecord(planId);
 
     const serviceCode = input.serviceCode.toUpperCase();
+    const clinicId = appConfig.clinicId;
 
     const [service] = await db
-        .select({ serviceCode: serviceCatalog.serviceCode })
+        .select({
+            serviceCode: serviceCatalog.serviceCode,
+            serviceName: serviceCatalog.serviceName,
+            category: serviceCatalog.category,
+            id: serviceCatalog.id,
+        })
         .from(serviceCatalog)
-        .where(eq(serviceCatalog.serviceCode, serviceCode))
+        .where(
+            and(
+                eq(serviceCatalog.serviceCode, serviceCode),
+                eq(serviceCatalog.clinicId, clinicId),
+                eq(serviceCatalog.isActive, true)
+            )
+        )
         .limit(1);
 
     if (!service) {
@@ -204,7 +238,13 @@ export const createMembershipBenefit = async (
         })
         .returning();
 
-    return benefit;
+    return {
+        ...benefit,
+        serviceName: service.serviceName,
+        category: service.category,
+        serviceId: service.id,
+        serviceIsActive: true,
+    };
 };
 
 export const updateMembershipBenefit = async (

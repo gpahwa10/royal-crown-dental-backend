@@ -35,6 +35,8 @@ export interface ListServiceCatalogOptions {
     search?: string;
     category?: string;
     isActive?: boolean;
+    /** When true, return all matching rows (up to a high cap) for pickers. */
+    all?: boolean;
 }
 
 export type ServiceCatalogRow = typeof serviceCatalog.$inferSelect;
@@ -104,8 +106,10 @@ export const listServiceCatalog = async (
     options: ListServiceCatalogOptions = {}
 ) => {
     const page = Math.max(1, options.page ?? 1);
-    const limit = Math.min(100, Math.max(1, options.limit ?? 20));
-    const offset = (page - 1) * limit;
+    const limit = options.all
+        ? Math.min(2000, Math.max(1, options.limit ?? 2000))
+        : Math.min(500, Math.max(1, options.limit ?? 20));
+    const offset = options.all ? 0 : (page - 1) * limit;
 
     const filters: SQL[] = [];
 
@@ -140,19 +144,23 @@ export const listServiceCatalog = async (
         .from(serviceCatalog)
         .where(whereClause);
 
-    const items = await db
+    const total = Number(totalRow?.total ?? 0);
+
+    const itemsQuery = db
         .select()
         .from(serviceCatalog)
         .where(whereClause)
-        .orderBy(desc(serviceCatalog.createdAt))
-        .limit(limit)
-        .offset(offset);
+        .orderBy(desc(serviceCatalog.createdAt));
+
+    const items = options.all
+        ? await itemsQuery.limit(limit)
+        : await itemsQuery.limit(limit).offset(offset);
 
     return {
         items,
-        total: totalRow?.total ?? 0,
-        page,
-        limit,
+        total,
+        page: options.all ? 1 : page,
+        limit: options.all ? total : limit,
     };
 };
 

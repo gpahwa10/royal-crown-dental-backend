@@ -33,6 +33,8 @@ export const normalizePaymentMethodInput = (value: unknown): unknown => {
 
     const trimmed = value.trim().toLowerCase();
     const compact = trimmed.replace(/[\s-_]/g, "");
+
+    // Accept UI labels: Mpesa, MPesa, M-Pesa, m pesa, etc.
     if (compact === "mpesa") {
         return "mpesa";
     }

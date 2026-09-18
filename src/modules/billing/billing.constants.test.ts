@@ -7,7 +7,8 @@ describe("paymentMethodSchema", () => {
         expect(paymentMethodSchema.parse("mpesa")).toBe("mpesa");
     });
 
-    it("accepts M-Pesa style labels from the billing UI", () => {
+    it("accepts Mpesa / M-Pesa style labels from the billing UI", () => {
+        expect(paymentMethodSchema.parse("Mpesa")).toBe("mpesa");
         expect(paymentMethodSchema.parse("MPesa")).toBe("mpesa");
         expect(paymentMethodSchema.parse("M-Pesa")).toBe("mpesa");
         expect(paymentMethodSchema.parse("m-pesa")).toBe("mpesa");
@@ -21,6 +22,7 @@ describe("paymentMethodSchema", () => {
 
 describe("normalizePaymentMethodInput", () => {
     it("maps compact mpesa spellings", () => {
+        expect(normalizePaymentMethodInput("Mpesa")).toBe("mpesa");
         expect(normalizePaymentMethodInput("M Pesa")).toBe("mpesa");
     });
 });

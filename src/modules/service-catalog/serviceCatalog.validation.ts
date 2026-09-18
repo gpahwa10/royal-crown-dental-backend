@@ -38,7 +38,7 @@ export const updateServiceCatalogSchema = z
 
 export const serviceCatalogListQuerySchema = z.object({
     page: z.coerce.number().int().min(1).default(1),
-    limit: z.coerce.number().int().min(1).max(100).default(20),
+    limit: z.coerce.number().int().min(1).max(2000).default(20),
     clinicId: z.uuid().optional(),
     search: z.string().trim().optional(),
     category: z.string().trim().optional(),
@@ -48,4 +48,8 @@ export const serviceCatalogListQuerySchema = z.object({
         .transform((value) =>
             value === undefined ? undefined : value === "true"
         ),
+    all: z
+        .enum(["true", "false"])
+        .optional()
+        .transform((value) => value === "true"),
 });
