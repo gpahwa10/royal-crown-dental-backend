@@ -32,14 +32,28 @@ export const normalizePaymentMethodInput = (value: unknown): unknown => {
     }
 
     const trimmed = value.trim().toLowerCase();
-    const compact = trimmed.replace(/[\s-_]/g, "");
+    // Strip spaces, hyphens, underscores, periods, and unicode dashes.
+    const compact = trimmed.replace(/[^a-z0-9]/g, "");
 
-    // Accept UI labels: Mpesa, MPesa, M-Pesa, m pesa, etc.
-    if (compact === "mpesa") {
+    // MPesa is often sent as UI copy: M‑Pesa, Lipa Na M-Pesa, Mobile Money.
+    if (compact.includes("mpesa") || compact === "mobilemoney") {
         return "mpesa";
     }
 
-    return trimmed;
+    const aliases: Record<string, (typeof PAYMENT_METHODS)[number]> = {
+        cash: "cash",
+        upi: "upi",
+        card: "card",
+        creditcard: "card",
+        debitcard: "card",
+        finance: "finance",
+        banktransfer: "bank_transfer",
+        bank: "bank_transfer",
+        cheque: "cheque",
+        check: "cheque",
+    };
+
+    return aliases[compact] ?? trimmed;
 };
 
 export const INVOICE_NUMBER_PREFIX = "INV";

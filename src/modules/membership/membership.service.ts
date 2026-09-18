@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { appConfig } from "../../config/app.config";
 import { db } from "../../db/client";
 import { invoices } from "../../db/schema/invoices";
@@ -38,6 +38,23 @@ export interface CreateMembershipBenefitInput {
     discountType: MembershipDiscountType;
     discountValue: number;
 }
+
+export type MembershipPlanBenefitRow = {
+    id: string;
+    membershipPlanId: string;
+    serviceCode: string;
+    discountType: MembershipDiscountType;
+    discountValue: number;
+    createdAt: Date;
+    serviceName: string | null;
+    category: string | null;
+    serviceId: string | null;
+    serviceIsActive: boolean | null;
+};
+
+export type MembershipPlanWithBenefits = typeof membershipPlans.$inferSelect & {
+    benefits: MembershipPlanBenefitRow[];
+};
 
 export interface PurchasePatientMembershipInput {
     patientId: string;
@@ -100,6 +117,56 @@ const assertNoActiveMembership = async (patientId: string) => {
     }
 };
 
+const listBenefitsForPlanIds = async (
+    planIds: string[]
+): Promise<Map<string, MembershipPlanBenefitRow[]>> => {
+    const benefitsByPlanId = new Map<string, MembershipPlanBenefitRow[]>();
+
+    for (const planId of planIds) {
+        benefitsByPlanId.set(planId, []);
+    }
+
+    if (planIds.length === 0) {
+        return benefitsByPlanId;
+    }
+
+    const clinicId = appConfig.clinicId;
+    const benefits = await db
+        .select({
+            id: membershipPlanBenefits.id,
+            membershipPlanId: membershipPlanBenefits.membershipPlanId,
+            serviceCode: membershipPlanBenefits.serviceCode,
+            discountType: membershipPlanBenefits.discountType,
+            discountValue: membershipPlanBenefits.discountValue,
+            createdAt: membershipPlanBenefits.createdAt,
+            serviceName: serviceCatalog.serviceName,
+            category: serviceCatalog.category,
+            serviceId: serviceCatalog.id,
+            serviceIsActive: serviceCatalog.isActive,
+        })
+        .from(membershipPlanBenefits)
+        .leftJoin(
+            serviceCatalog,
+            and(
+                eq(
+                    serviceCatalog.serviceCode,
+                    membershipPlanBenefits.serviceCode
+                ),
+                eq(serviceCatalog.clinicId, clinicId)
+            )
+        )
+        .where(inArray(membershipPlanBenefits.membershipPlanId, planIds))
+        .orderBy(desc(membershipPlanBenefits.createdAt));
+
+    for (const benefit of benefits) {
+        const existing = benefitsByPlanId.get(benefit.membershipPlanId) ?? [];
+        existing.push(benefit);
+        benefitsByPlanId.set(benefit.membershipPlanId, existing);
+    }
+
+    return benefitsByPlanId;
+};
+
 export const createMembershipPlan = async (
     input: CreateMembershipPlanInput
 ) => {
@@ -127,44 +194,37 @@ export const createMembershipPlan = async (
         })
         .returning();
 
-    return plan;
+    return { ...plan, benefits: [] };
 };
 
-export const listMembershipPlans = async () =>
-    db
+export const listMembershipPlans = async (): Promise<
+    MembershipPlanWithBenefits[]
+> => {
+    const plans = await db
         .select()
         .from(membershipPlans)
         .orderBy(desc(membershipPlans.createdAt));
 
-export const getMembershipPlanById = async (id: string) => {
+    const benefitsByPlanId = await listBenefitsForPlanIds(
+        plans.map((plan) => plan.id)
+    );
+
+    return plans.map((plan) => ({
+        ...plan,
+        benefits: benefitsByPlanId.get(plan.id) ?? [],
+    }));
+};
+
+export const getMembershipPlanById = async (
+    id: string
+): Promise<MembershipPlanWithBenefits> => {
     const plan = await getMembershipPlanRecord(id);
-    const clinicId = appConfig.clinicId;
+    const benefitsByPlanId = await listBenefitsForPlanIds([id]);
 
-    const benefits = await db
-        .select({
-            id: membershipPlanBenefits.id,
-            membershipPlanId: membershipPlanBenefits.membershipPlanId,
-            serviceCode: membershipPlanBenefits.serviceCode,
-            discountType: membershipPlanBenefits.discountType,
-            discountValue: membershipPlanBenefits.discountValue,
-            createdAt: membershipPlanBenefits.createdAt,
-            serviceName: serviceCatalog.serviceName,
-            category: serviceCatalog.category,
-            serviceId: serviceCatalog.id,
-            serviceIsActive: serviceCatalog.isActive,
-        })
-        .from(membershipPlanBenefits)
-        .leftJoin(
-            serviceCatalog,
-            and(
-                eq(serviceCatalog.serviceCode, membershipPlanBenefits.serviceCode),
-                eq(serviceCatalog.clinicId, clinicId)
-            )
-        )
-        .where(eq(membershipPlanBenefits.membershipPlanId, id))
-        .orderBy(desc(membershipPlanBenefits.createdAt));
-
-    return { plan, benefits };
+    return {
+        ...plan,
+        benefits: benefitsByPlanId.get(id) ?? [],
+    };
 };
 
 export const updateMembershipPlan = async (
