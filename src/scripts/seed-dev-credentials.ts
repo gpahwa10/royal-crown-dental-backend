@@ -11,21 +11,29 @@ import { superAdmins } from "../db/schema/superAdmins";
 import {
     EMPLOYEE_ROLES,
     ROLE_DOCTOR,
+    ROLE_RECEPTION,
     SALT_ROUNDS,
 } from "../modules/auth/auth.constants";
 import { seedClinics } from "./seed/seed-clinics";
 
 export const DEV_CREDENTIALS = {
     superAdmin: {
-        email: "superadmin@royalcrown.com",
+        email: "luvayhamid@hotmail.com",
         password: "SuperAdmin@123",
-        name: "Super Admin",
+        name: "Luvay Hamid",
+        phone: "+254-738420070",
     },
     doctor: {
-        email: "doctor@royalcrown.com",
+        email: "instaglaze52@gmail.com",
         password: "Doctor@123",
-        name: "Clinic Doctor",
-        phone: "9000000001",
+        name: "Doctor",
+        phone: "+254-722901521",
+    },
+    receptionist: {
+        email: "royalcrowndentalcare@hotmail.com",
+        password: "Receptionist@123",
+        name: "Receptionist",
+        phone: "+254-412225429",
     },
 } as const;
 
@@ -87,16 +95,26 @@ const seedClinicHours = async (clinicId: string) => {
     );
 };
 
-const seedDoctor = async (clinicId: string) => {
-    const { email, password, name, phone } = DEV_CREDENTIALS.doctor;
+const seedEmployee = async ({
+    clinicId,
+    credentials,
+    roleName,
+    label,
+}: {
+    clinicId: string;
+    credentials: (typeof DEV_CREDENTIALS)["doctor" | "receptionist"];
+    roleName: string;
+    label: string;
+}) => {
+    const { email, password, name, phone } = credentials;
 
     const [role] = await db
         .select({ id: employeeRoles.id })
         .from(employeeRoles)
-        .where(eq(employeeRoles.name, ROLE_DOCTOR));
+        .where(eq(employeeRoles.name, roleName));
 
     if (!role) {
-        throw new Error(`Employee role "${ROLE_DOCTOR}" was not seeded`);
+        throw new Error(`Employee role "${roleName}" was not seeded`);
     }
 
     const [existing] = await db
@@ -116,7 +134,7 @@ const seedDoctor = async (clinicId: string) => {
                 email,
                 password: hashedPassword,
                 phone,
-                designation: ROLE_DOCTOR,
+                designation: roleName,
                 timings: `${CLINIC_OPEN_TIME}-${CLINIC_CLOSE_TIME}`,
                 isActive: true,
                 isBlocked: false,
@@ -126,7 +144,7 @@ const seedDoctor = async (clinicId: string) => {
             .returning({ id: employees.id });
 
         employeeId = created.id;
-        console.log(`Created doctor: ${email}`);
+        console.log(`Created ${label}: ${email}`);
     } else {
         await db
             .update(employees)
@@ -137,7 +155,7 @@ const seedDoctor = async (clinicId: string) => {
                 isSuspended: false,
             })
             .where(eq(employees.id, employeeId));
-        console.log(`Doctor already exists: ${email}`);
+        console.log(`${label} already exists: ${email}`);
     }
 
     await db
@@ -160,9 +178,25 @@ const seedDoctor = async (clinicId: string) => {
     );
 
     console.log(
-        `Seeded doctor hours: ${CLINIC_OPEN_TIME}–${CLINIC_CLOSE_TIME} (all 7 days)`
+        `Seeded ${label} hours: ${CLINIC_OPEN_TIME}–${CLINIC_CLOSE_TIME} (all 7 days)`
     );
 };
+
+const seedDoctor = async (clinicId: string) =>
+    seedEmployee({
+        clinicId,
+        credentials: DEV_CREDENTIALS.doctor,
+        roleName: ROLE_DOCTOR,
+        label: "doctor",
+    });
+
+const seedReceptionist = async (clinicId: string) =>
+    seedEmployee({
+        clinicId,
+        credentials: DEV_CREDENTIALS.receptionist,
+        roleName: ROLE_RECEPTION,
+        label: "receptionist",
+    });
 
 const main = async () => {
     if (!process.env.DATABASE_URL) {
@@ -194,6 +228,7 @@ const main = async () => {
     await seedClinicHours(clinicId);
     await seedSuperAdmin();
     await seedDoctor(clinicId);
+    await seedReceptionist(clinicId);
 
     console.log("\n--- Dev credentials ---");
     console.log("Clinic: Royal Crown Dental Care");
@@ -205,6 +240,9 @@ const main = async () => {
     console.log("\nDoctor (employees table — required for appointment slots)");
     console.log(`  Email:    ${DEV_CREDENTIALS.doctor.email}`);
     console.log(`  Password: ${DEV_CREDENTIALS.doctor.password}`);
+    console.log("\nReceptionist (employees table — FDE role)");
+    console.log(`  Email:    ${DEV_CREDENTIALS.receptionist.email}`);
+    console.log(`  Password: ${DEV_CREDENTIALS.receptionist.password}`);
     console.log("\nLogin: POST /api/auth/login");
 };
 

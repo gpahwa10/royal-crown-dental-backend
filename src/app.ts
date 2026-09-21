@@ -34,6 +34,7 @@ app.use(
         origin: [
           "http://localhost:5173",
           "https://royal-crown-dental-clinic-web.vercel.app",
+          "https://dashboard.rcdentalcare.co.ke"
         ],
         allowedHeaders: ["Content-Type", "Authorization"],
         methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
