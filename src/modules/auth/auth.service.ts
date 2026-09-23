@@ -49,7 +49,10 @@ const assertSuperAdminCanLogin = (admin: SuperAdminRecord) => {
 
 const buildEmployeeToken = async (
     employee: EmployeeRecord,
-    mustChangePassword?: boolean
+    options?: {
+        isSuperAdmin?: boolean;
+        mustChangePassword?: boolean;
+    }
 ) => {
     const roles = await getEmployeeRoleNames(employee.id);
 
@@ -61,9 +64,9 @@ const buildEmployeeToken = async (
         id: employee.id,
         clinicId: employee.clinicId,
         roles,
-        isSuperAdmin: false,
+        isSuperAdmin: options?.isSuperAdmin ?? false,
         mustChangePassword:
-            mustChangePassword ?? employee.mustChangePassword,
+            options?.mustChangePassword ?? employee.mustChangePassword,
     });
 };
 
@@ -86,11 +89,21 @@ export interface CreateSuperAdminInput {
     password: string;
 }
 
+const findLinkedSuperAdmin = async (email: string) => {
+    const [admin] = await db
+        .select()
+        .from(superAdmins)
+        .where(eq(superAdmins.email, email));
+    return admin ?? null;
+};
+
 export const login = async (email: string, password: string) => {
     const [employee] = await db
         .select()
         .from(employees)
         .where(eq(employees.email, email));
+
+    const admin = await findLinkedSuperAdmin(email);
 
     if (employee) {
         assertEmployeeCanLogin(employee);
@@ -99,12 +112,20 @@ export const login = async (email: string, password: string) => {
             throw new Error("You cannot access another clinic");
         }
 
-        const isPasswordValid = await bcrypt.compare(
+        const employeePasswordValid = await bcrypt.compare(
             password,
             employee.password
         );
-        if (!isPasswordValid) {
+        const adminPasswordValid = admin
+            ? await bcrypt.compare(password, admin.password)
+            : false;
+
+        if (!employeePasswordValid && !adminPasswordValid) {
             throw new Error("Invalid credentials");
+        }
+
+        if (admin) {
+            assertSuperAdminCanLogin(admin);
         }
 
         const now = new Date();
@@ -113,8 +134,16 @@ export const login = async (email: string, password: string) => {
             .set({ lastLoginAt: now, updatedAt: now })
             .where(eq(employees.id, employee.id));
 
+        if (admin) {
+            await db
+                .update(superAdmins)
+                .set({ lastLoginAt: now, updatedAt: now })
+                .where(eq(superAdmins.id, admin.id));
+        }
+
         const roles = await getEmployeeRoleNames(employee.id);
-        const token = await buildEmployeeToken(employee);
+        const isSuperAdmin = Boolean(admin);
+        const token = await buildEmployeeToken(employee, { isSuperAdmin });
 
         return {
             user: omitPassword({
@@ -123,20 +152,15 @@ export const login = async (email: string, password: string) => {
             }),
             token,
             roles,
-            isSuperAdmin: false,
+            isSuperAdmin,
             hasPlatformAdminAccess: hasPlatformAdminAccess({
-                isSuperAdmin: false,
+                isSuperAdmin,
                 roles,
             }),
             clinicId: appConfig.clinicId,
             mustChangePassword: employee.mustChangePassword,
         };
     }
-
-    const [admin] = await db
-        .select()
-        .from(superAdmins)
-        .where(eq(superAdmins.email, email));
 
     if (!admin) {
         throw new Error("Invalid credentials");
@@ -212,10 +236,22 @@ export const changePassword = async (input: {
     newPassword: string;
 }) => {
     if (input.isSuperAdmin) {
-        const [admin] = await db
+        let [admin] = await db
             .select()
             .from(superAdmins)
             .where(eq(superAdmins.id, input.userId));
+
+        if (!admin) {
+            const [linkedEmployee] = await db
+                .select()
+                .from(employees)
+                .where(eq(employees.id, input.userId));
+            if (linkedEmployee) {
+                admin =
+                    (await findLinkedSuperAdmin(linkedEmployee.email)) ??
+                    undefined;
+            }
+        }
 
         if (!admin) {
             throw new Error("User not found");
@@ -255,6 +291,35 @@ export const changePassword = async (input: {
             })
             .where(eq(superAdmins.id, admin.id))
             .returning();
+
+        const [linkedEmployee] = await db
+            .select()
+            .from(employees)
+            .where(eq(employees.email, updated.email));
+
+        if (linkedEmployee) {
+            const [updatedEmployee] = await db
+                .update(employees)
+                .set({
+                    password,
+                    mustChangePassword: false,
+                    updatedAt: new Date(),
+                })
+                .where(eq(employees.id, linkedEmployee.id))
+                .returning();
+
+            const token = await buildEmployeeToken(updatedEmployee, {
+                isSuperAdmin: true,
+                mustChangePassword: false,
+            });
+
+            return {
+                message: "Password updated successfully",
+                mustChangePassword: false,
+                token,
+                user: omitPassword(updatedEmployee),
+            };
+        }
 
         const token = buildSuperAdminToken(updated, false);
 
@@ -309,7 +374,11 @@ export const changePassword = async (input: {
         .where(eq(employees.id, employee.id))
         .returning();
 
-    const token = await buildEmployeeToken(updated, false);
+        const linkedAdmin = await findLinkedSuperAdmin(updated.email);
+        const token = await buildEmployeeToken(updated, {
+            isSuperAdmin: Boolean(linkedAdmin),
+            mustChangePassword: false,
+        });
 
     return {
         message: "Password updated successfully",

@@ -53,6 +53,7 @@ const seedEmployeeRoles = async () => {
 
 const seedSuperAdmin = async () => {
     const { email, password, name } = DEV_CREDENTIALS.superAdmin;
+    const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
     const [existing] = await db
         .select({ id: superAdmins.id })
@@ -60,16 +61,26 @@ const seedSuperAdmin = async () => {
         .where(eq(superAdmins.email, email));
 
     if (existing) {
-        console.log(`Super admin already exists: ${email}`);
+        await db
+            .update(superAdmins)
+            .set({
+                name,
+                password: hashedPassword,
+                isActive: true,
+                isBlocked: false,
+                mustChangePassword: false,
+                updatedAt: new Date(),
+            })
+            .where(eq(superAdmins.id, existing.id));
+        console.log(`Updated super admin: ${email}`);
         return;
     }
-
-    const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
     await db.insert(superAdmins).values({
         name,
         email,
         password: hashedPassword,
+        mustChangePassword: false,
     });
 
     console.log(`Created super admin: ${email}`);
@@ -102,7 +113,7 @@ const seedEmployee = async ({
     label,
 }: {
     clinicId: string;
-    credentials: (typeof DEV_CREDENTIALS)["doctor" | "receptionist"];
+    credentials: (typeof DEV_CREDENTIALS)["superAdmin" | "doctor" | "receptionist"];
     roleName: string;
     label: string;
 }) => {
@@ -150,9 +161,13 @@ const seedEmployee = async ({
             .update(employees)
             .set({
                 clinicId,
+                name,
+                phone,
+                designation: roleName,
                 isActive: true,
                 isBlocked: false,
                 isSuspended: false,
+                mustChangePassword: false,
             })
             .where(eq(employees.id, employeeId));
         console.log(`${label} already exists: ${email}`);
@@ -181,6 +196,14 @@ const seedEmployee = async ({
         `Seeded ${label} hours: ${CLINIC_OPEN_TIME}–${CLINIC_CLOSE_TIME} (all 7 days)`
     );
 };
+
+const seedSuperAdminDoctor = async (clinicId: string) =>
+    seedEmployee({
+        clinicId,
+        credentials: DEV_CREDENTIALS.superAdmin,
+        roleName: ROLE_DOCTOR,
+        label: "super admin doctor",
+    });
 
 const seedDoctor = async (clinicId: string) =>
     seedEmployee({
@@ -227,6 +250,7 @@ const main = async () => {
 
     await seedClinicHours(clinicId);
     await seedSuperAdmin();
+    await seedSuperAdminDoctor(clinicId);
     await seedDoctor(clinicId);
     await seedReceptionist(clinicId);
 
@@ -234,7 +258,7 @@ const main = async () => {
     console.log("Clinic: Royal Crown Dental Care");
     console.log(`Clinic ID (set CLINIC_ID in .env): ${clinicId}`);
     console.log(`Hours:   ${CLINIC_OPEN_TIME}–${CLINIC_CLOSE_TIME} every day`);
-    console.log("\nSuper Admin (super_admins table)");
+    console.log("\nSuper Admin (doctor + super_admins — platform access)");
     console.log(`  Email:    ${DEV_CREDENTIALS.superAdmin.email}`);
     console.log(`  Password: ${DEV_CREDENTIALS.superAdmin.password}`);
     console.log("\nDoctor (employees table — required for appointment slots)");
