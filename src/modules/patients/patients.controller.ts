@@ -5,6 +5,7 @@ import {
     assertPatientClinicAccess,
     blacklistPatient,
     bulkRegisterPatients,
+    deletePatient,
     getPatientById,
     getPatientDetails,
     listPatients,
@@ -227,6 +228,24 @@ export const updatePatientMedicalProfileHandler = async (
             message: "Patient medical profile updated successfully",
             data: result,
         });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
+export const deletePatientHandler = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = patientIdParamSchema.parse(req.params);
+        const existing = await getPatientById(id);
+
+        assertPatientClinicAccess(
+            existing.clinicId,
+            hasPlatformAdminAccess(req.employee),
+            req.clinicId
+        );
+
+        const result = await deletePatient(id);
+        return res.status(200).json({ success: true, data: result });
     } catch (error) {
         return handleError(res, error);
     }

@@ -8,6 +8,7 @@ import { assertPatientClinicAccess } from "../patients/patients.utils";
 import {
     cancelInvoice,
     createInvoice,
+    deleteInvoice,
     getInvoiceById,
     listInvoices,
     listInvoicesByPatientId,
@@ -136,6 +137,25 @@ export const cancelInvoiceHandler = async (req: AuthRequest, res: Response) => {
 
         const invoice = await cancelInvoice(id);
         return res.status(200).json({ success: true, data: invoice });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
+export const deleteInvoiceHandler = async (req: AuthRequest, res: Response) => {
+    try {
+        assertFinancialWriteAccess(req);
+        const { id } = invoiceIdParamSchema.parse(req.params);
+
+        const existing = await getInvoiceById(id);
+        assertInvoiceClinicAccess(
+            existing.invoice.clinicId,
+            hasPlatformAdminAccess(req.employee),
+            req.clinicId
+        );
+
+        const result = await deleteInvoice(id);
+        return res.status(200).json({ success: true, data: result });
     } catch (error) {
         return handleError(res, error);
     }

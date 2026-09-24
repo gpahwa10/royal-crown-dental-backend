@@ -18,6 +18,7 @@ import {
     createAppointmentFromVisit,
     createClinicVisit,
     createMembershipFromVisit,
+    deleteClinicVisit,
     getClinicVisitById,
     listClinicVisits,
     listClinicVisitsByPatientId,
@@ -372,6 +373,28 @@ export const attachMedicalRecordHandler = async (
 
         const visit = await attachMedicalRecordToVisit(id, body.fileId);
         return res.status(200).json({ success: true, data: visit });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
+export const deleteClinicVisitHandler = async (
+    req: AuthRequest,
+    res: Response
+) => {
+    try {
+        assertClinicVisitWriteAccess(req);
+        const { id } = clinicVisitIdParamSchema.parse(req.params);
+        const existing = await getClinicVisitById(id);
+
+        await assertVisitAccess(
+            req,
+            existing.visit.clinicId,
+            existing.visit.doctorId
+        );
+
+        const result = await deleteClinicVisit(id);
+        return res.status(200).json({ success: true, data: result });
     } catch (error) {
         return handleError(res, error);
     }

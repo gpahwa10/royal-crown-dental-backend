@@ -281,6 +281,48 @@ export const buildRadiographTimelineEvents = (
     return events;
 };
 
+export const getRadiographById = async (id: string) => {
+    const [record] = await db
+        .select()
+        .from(radiographs)
+        .where(eq(radiographs.id, id));
+
+    if (record) {
+        return { kind: "record" as const, clinicId: record.clinicId, record };
+    }
+
+    const [file] = await db
+        .select()
+        .from(files)
+        .where(and(eq(files.id, id), eq(files.documentType, "radiograph")));
+
+    if (file) {
+        return { kind: "upload" as const, clinicId: file.clinicId, file };
+    }
+
+    throw new Error("Radiograph not found");
+};
+
+export const deleteRadiograph = async (id: string) => {
+    const existing = await getRadiographById(id);
+
+    if (existing.kind === "record") {
+        await db.delete(radiographs).where(eq(radiographs.id, existing.record.id));
+        return { id: existing.record.id };
+    }
+
+    await db
+        .update(radiographs)
+        .set({ imageFileId: null })
+        .where(eq(radiographs.imageFileId, existing.file.id));
+    await db
+        .update(radiographs)
+        .set({ reportFileId: null })
+        .where(eq(radiographs.reportFileId, existing.file.id));
+    await db.delete(files).where(eq(files.id, existing.file.id));
+    return { id: existing.file.id };
+};
+
 export const getRadiographTimelineEventsForPatient = async (
     patientId: string
 ) => {

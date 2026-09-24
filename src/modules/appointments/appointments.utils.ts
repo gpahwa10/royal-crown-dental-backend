@@ -54,7 +54,8 @@ export const handleError = (res: Response, error: unknown) => {
         : FORBIDDEN_MESSAGES.has(message)
           ? 403
           : message.includes("already exists") ||
-              message.includes("duplicate key")
+              message.includes("duplicate key") ||
+              message.includes("Duplicate check-in")
             ? 409
             : 400;
 

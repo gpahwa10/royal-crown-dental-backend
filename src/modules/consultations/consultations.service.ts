@@ -5,9 +5,13 @@ import { clinics } from "../../db/schema/clinic";
 import { clinicVisits } from "../../db/schema/clinicVisits";
 import { consultations } from "../../db/schema/consultations";
 import { consultationOdontograms } from "../../db/schema/consultationOdontograms";
+import { dentalLabOrders } from "../../db/schema/dentalLabOrders";
 import { employeeRoleAssignments } from "../../db/schema/employeeRoleAssignments";
 import { employees } from "../../db/schema/employees";
+import { followUps } from "../../db/schema/followups";
+import { labRequests } from "../../db/schema/labRequests";
 import { patients } from "../../db/schema/patients";
+import { radiographs } from "../../db/schema/radiographs";
 import { employeeRoles } from "../../db/schema/roles";
 import { ROLE_DOCTOR } from "../auth/auth.constants";
 import {
@@ -26,6 +30,12 @@ export interface CreateConsultationInput {
     clinicId: string;
     appointmentId?: string;
     chiefComplaint: string;
+    diagnosis?: string;
+    treatmentPlan?: string;
+    clinicalNotes?: string;
+    nextVisitDate?: Date;
+    consultedAt?: Date;
+    markCompleted?: boolean;
 }
 
 export interface UpdateConsultationInput {
@@ -34,6 +44,7 @@ export interface UpdateConsultationInput {
     treatmentPlan?: string | null;
     clinicalNotes?: string | null;
     nextVisitDate?: Date | string | null;
+    consultedAt?: Date;
     consentRequired?: boolean;
     consentSigned?: boolean;
     consentSignatureUrl?: string | null;
@@ -166,6 +177,9 @@ export const createConsultation = async (input: CreateConsultationInput) => {
     const [consultation] = await db.transaction(async (tx) => {
         const consultationCode = await generateConsultationCode(tx);
 
+        const consultedAt = input.consultedAt ?? new Date();
+        const markCompleted = input.markCompleted === true;
+
         const [created] = await tx
             .insert(consultations)
             .values({
@@ -175,7 +189,12 @@ export const createConsultation = async (input: CreateConsultationInput) => {
                 doctorId: input.doctorId,
                 appointmentId: input.appointmentId,
                 chiefComplaint: input.chiefComplaint,
-                status: "draft",
+                diagnosis: input.diagnosis,
+                treatmentPlan: input.treatmentPlan,
+                clinicalNotes: input.clinicalNotes,
+                nextVisitDate: input.nextVisitDate,
+                consultedAt,
+                status: markCompleted ? "completed" : "draft",
             })
             .returning();
 
@@ -234,6 +253,9 @@ export const updateConsultation = async (
                     input.nextVisitDate === null
                         ? null
                         : new Date(input.nextVisitDate),
+            }),
+            ...(input.consultedAt !== undefined && {
+                consultedAt: input.consultedAt,
             }),
             ...(input.consentRequired !== undefined && {
                 consentRequired: input.consentRequired,
@@ -342,7 +364,7 @@ export const listConsultationsByPatientId = async (patientId: string) => {
         .from(consultations)
         .leftJoin(employees, eq(consultations.doctorId, employees.id))
         .where(eq(consultations.patientId, patientId))
-        .orderBy(desc(consultations.createdAt));
+        .orderBy(desc(consultations.consultedAt), desc(consultations.createdAt));
 
     if (rows.length === 0) {
         return [];
@@ -386,6 +408,36 @@ export const listConsultationsByPatientId = async (patientId: string) => {
         odontogram: odontogramByConsultationId.get(consultation.id) ?? null,
         prescriptions: prescriptionsByConsultationId.get(consultation.id) ?? [],
     }));
+};
+
+export const deleteConsultation = async (id: string) => {
+    const consultation = await getConsultationRecord(id);
+
+    await db.transaction(async (tx) => {
+        await tx
+            .delete(followUps)
+            .where(eq(followUps.consultationId, consultation.id));
+        await tx
+            .delete(radiographs)
+            .where(eq(radiographs.consultationId, consultation.id));
+        await tx
+            .update(dentalLabOrders)
+            .set({ consultationId: null, updatedAt: new Date() })
+            .where(eq(dentalLabOrders.consultationId, consultation.id));
+        await tx
+            .update(labRequests)
+            .set({ consultationId: null, updatedAt: new Date() })
+            .where(eq(labRequests.consultationId, consultation.id));
+        await tx
+            .update(clinicVisits)
+            .set({ consultationId: null, updatedAt: new Date() })
+            .where(eq(clinicVisits.consultationId, consultation.id));
+        await tx
+            .delete(consultations)
+            .where(eq(consultations.id, consultation.id));
+    });
+
+    return { id: consultation.id };
 };
 
 export { assertConsultationClinicAccess } from "./consultations.utils";

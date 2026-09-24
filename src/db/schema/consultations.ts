@@ -51,6 +51,7 @@ export const consultations = pgTable(
         consentSigned: boolean("consent_signed").default(false).notNull(),
         consentSignatureUrl: text("consent_signature_url"),
         consentSignedAt: timestamp("consent_signed_at"),
+        consultedAt: timestamp("consulted_at").defaultNow().notNull(),
         createdAt: timestamp("created_at").defaultNow().notNull(),
         updatedAt: timestamp("updated_at").defaultNow().notNull(),
     },

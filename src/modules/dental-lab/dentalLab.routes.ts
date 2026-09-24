@@ -4,6 +4,7 @@ import {
     attachDentalLabFileHandler,
     createCementationAppointmentHandler,
     createDentalLabOrderHandler,
+    deleteDentalLabOrderHandler,
     deliverDentalLabOrderHandler,
     getDentalLabOrderHandler,
     listDentalLabOrdersHandler,
@@ -20,6 +21,7 @@ router.post("/", createDentalLabOrderHandler);
 router.get("/", listDentalLabOrdersHandler);
 router.get("/:id", getDentalLabOrderHandler);
 router.patch("/:id", updateDentalLabOrderHandler);
+router.delete("/:id", deleteDentalLabOrderHandler);
 router.patch("/:id/deliver", deliverDentalLabOrderHandler);
 router.post("/:id/cementation-appointment", createCementationAppointmentHandler);
 router.patch("/:id/cementation", recordCementationHandler);

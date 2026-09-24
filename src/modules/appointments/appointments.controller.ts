@@ -5,6 +5,8 @@ import {
     assertAppointmentClinicAccess,
     assertAppointmentShiftAccess,
     createAppointment,
+    createWalkInAppointment,
+    deleteAppointment,
     getAppointmentById,
     getAvailableDoctorsForSlot,
     listAppointments,
@@ -17,6 +19,7 @@ import {
     appointmentParamsSchema,
     availableDoctorsQuerySchema,
     createAppointmentSchema,
+    createWalkInAppointmentSchema,
     listAppointmentsQuerySchema,
     shiftAppointmentClinicSchema,
     updateAppointmentSchema,
@@ -91,6 +94,36 @@ export const createAppointmentHandler = async (
         });
 
         return res.status(201).json({ success: true, data: appointment });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
+export const createWalkInAppointmentHandler = async (
+    req: AuthRequest,
+    res: Response
+) => {
+    try {
+        const body = createWalkInAppointmentSchema.parse(req.body);
+
+        const clinicId = req.clinicId;
+
+        if (!clinicId) {
+            return res.status(400).json({
+                success: false,
+                message: "clinicId is required",
+            });
+        }
+
+        const result = await createWalkInAppointment({
+            ...body,
+            clinicId,
+            createdBy: req.employee?.isSuperAdmin
+                ? undefined
+                : req.employee?.id,
+        });
+
+        return res.status(201).json({ success: true, data: result });
     } catch (error) {
         return handleError(res, error);
     }
@@ -193,6 +226,27 @@ export const updateAppointmentStatusHandler = async (
 
         const appointment = await updateAppointmentStatus(id, body.status);
         return res.status(200).json({ success: true, data: appointment });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
+export const deleteAppointmentHandler = async (
+    req: AuthRequest,
+    res: Response
+) => {
+    try {
+        const { id } = appointmentParamsSchema.parse(req.params);
+        const existing = await getAppointmentById(id);
+
+        assertAppointmentClinicAccess(
+            existing.clinicId,
+            hasPlatformAdminAccess(req.employee),
+            req.clinicId
+        );
+
+        const result = await deleteAppointment(id);
+        return res.status(200).json({ success: true, data: result });
     } catch (error) {
         return handleError(res, error);
     }

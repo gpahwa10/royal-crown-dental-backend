@@ -4,6 +4,7 @@ import { hasPlatformAdminAccess } from "../auth/auth.constants";
 import { getPatientDetails } from "../patients/patients.service";
 import { assertPatientClinicAccess } from "../patients/patients.utils";
 import {
+    deletePrescription,
     getPrescriptionById,
     getPrescriptionClinicId,
     listPrescriptionsByPatientId,
@@ -54,6 +55,27 @@ export const updatePrescriptionHandler = async (
 
         const prescription = await updatePrescription(id, body);
         return res.status(200).json({ success: true, data: prescription });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
+export const deletePrescriptionHandler = async (
+    req: AuthRequest,
+    res: Response
+) => {
+    try {
+        const { id } = prescriptionIdParamSchema.parse(req.params);
+        const clinicId = await getPrescriptionClinicId(id);
+
+        assertPrescriptionClinicAccess(
+            clinicId,
+            hasPlatformAdminAccess(req.employee),
+            req.clinicId
+        );
+
+        const result = await deletePrescription(id);
+        return res.status(200).json({ success: true, data: result });
     } catch (error) {
         return handleError(res, error);
     }

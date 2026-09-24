@@ -4,17 +4,30 @@ import {
     desc,
     eq,
     ilike,
+    inArray,
     or,
 } from "drizzle-orm";
 import { db } from "../../db/client";
 import { appointments } from "../../db/schema/appointments";
 import { clinics } from "../../db/schema/clinic";
+import { clinicVisits } from "../../db/schema/clinicVisits";
 import { consultations } from "../../db/schema/consultations";
+import { dentalLabOrders } from "../../db/schema/dentalLabOrders";
 import { employeeRoleAssignments } from "../../db/schema/employeeRoleAssignments";
 import { employees } from "../../db/schema/employees";
+import { files } from "../../db/schema/files";
+import { followUps } from "../../db/schema/followups";
+import { invoices } from "../../db/schema/invoices";
+import { labReports } from "../../db/schema/labReports";
+import { labRequests } from "../../db/schema/labRequests";
+import { labRequestTests } from "../../db/schema/labRequestsTests";
+import { leads } from "../../db/schema/leads";
 import { patientConsents } from "../../db/schema/patientConsents";
 import { patientMedicalProfiles } from "../../db/schema/patientMedicalProfiles";
+import { patientMemberships } from "../../db/schema/patientMemberships";
 import { patients } from "../../db/schema/patients";
+import { prescriptions } from "../../db/schema/prescriptions";
+import { radiographs } from "../../db/schema/radiographs";
 import { employeeRoles } from "../../db/schema/roles";
 import { ROLE_DOCTOR } from "../auth/auth.constants";
 import { listConsultationsByPatientId } from "../consultations/consultations.service";
@@ -863,6 +876,93 @@ export const blacklistPatient = async (
     }
 
     return patient;
+};
+
+export const deletePatient = async (id: string) => {
+    const patient = await getPatientRecord(id);
+
+    await db.transaction(async (tx) => {
+        const [consultationRows, invoiceRows, labRequestRows, visitRows] =
+            await Promise.all([
+                tx
+                    .select({ id: consultations.id })
+                    .from(consultations)
+                    .where(eq(consultations.patientId, patient.id)),
+                tx
+                    .select({ id: invoices.id })
+                    .from(invoices)
+                    .where(eq(invoices.patientId, patient.id)),
+                tx
+                    .select({ id: labRequests.id })
+                    .from(labRequests)
+                    .where(eq(labRequests.patientId, patient.id)),
+                tx
+                    .select({ id: clinicVisits.id })
+                    .from(clinicVisits)
+                    .where(eq(clinicVisits.patientId, patient.id)),
+            ]);
+
+        const consultationIds = consultationRows.map((row) => row.id);
+        const invoiceIds = invoiceRows.map((row) => row.id);
+        const labRequestIds = labRequestRows.map((row) => row.id);
+
+        await tx.delete(followUps).where(eq(followUps.patientId, patient.id));
+        await tx.delete(radiographs).where(eq(radiographs.patientId, patient.id));
+
+        if (labRequestIds.length > 0) {
+            await tx
+                .delete(labReports)
+                .where(inArray(labReports.labRequestId, labRequestIds));
+            await tx
+                .delete(labRequestTests)
+                .where(inArray(labRequestTests.labRequestId, labRequestIds));
+        }
+        await tx.delete(labRequests).where(eq(labRequests.patientId, patient.id));
+        await tx
+            .delete(dentalLabOrders)
+            .where(eq(dentalLabOrders.patientId, patient.id));
+        await tx
+            .delete(prescriptions)
+            .where(eq(prescriptions.patientId, patient.id));
+
+        if (visitRows.length > 0) {
+            await tx
+                .delete(clinicVisits)
+                .where(inArray(clinicVisits.id, visitRows.map((row) => row.id)));
+        }
+
+        if (consultationIds.length > 0) {
+            await tx
+                .delete(consultations)
+                .where(inArray(consultations.id, consultationIds));
+        }
+
+        await tx
+            .delete(appointments)
+            .where(eq(appointments.patientId, patient.id));
+        await tx
+            .update(leads)
+            .set({ patientId: null, updatedAt: new Date() })
+            .where(eq(leads.patientId, patient.id));
+
+        if (invoiceIds.length > 0) {
+            await tx
+                .update(invoices)
+                .set({ invoicePdfFileId: null, updatedAt: new Date() })
+                .where(inArray(invoices.id, invoiceIds));
+            await tx
+                .delete(patientMemberships)
+                .where(inArray(patientMemberships.invoiceId, invoiceIds));
+        }
+        await tx
+            .delete(patientMemberships)
+            .where(eq(patientMemberships.patientId, patient.id));
+        await tx.delete(invoices).where(eq(invoices.patientId, patient.id));
+        await tx.delete(files).where(eq(files.patientId, patient.id));
+        await tx.delete(patients).where(eq(patients.id, patient.id));
+    });
+
+    return { id: patient.id };
 };
 
 export { assertPatientClinicAccess };

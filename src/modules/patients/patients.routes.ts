@@ -11,6 +11,7 @@ import { listPatientPrescriptionsHandler } from "../prescriptions/prescriptions.
 import {
     blacklistPatientHandler,
     bulkRegisterPatientsHandler,
+    deletePatientHandler,
     getPatientDetailsHandler,
     listPatientsByClinicHandler,
     listPatientsHandler,
@@ -44,5 +45,6 @@ router.get("/:id", getPatientDetailsHandler);
 router.get("/:id/odontogram", getPatientOdontogramHandler);
 router.put("/:id", updatePatientHandler);
 router.patch("/:id/blacklist", blacklistPatientHandler);
+router.delete("/:id", deletePatientHandler);
 
 export default router;

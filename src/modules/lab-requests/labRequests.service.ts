@@ -548,3 +548,11 @@ export const getLabRequestTimelineEventsForPatient = async (
 
     return buildLabRequestTimelineEvents(requestRows, reportsByRequestId);
 };
+
+export const deleteLabRequest = async (id: string) => {
+    const request = await getLabRequestRecord(id);
+
+    await db.delete(labRequests).where(eq(labRequests.id, request.id));
+
+    return { id: request.id };
+};

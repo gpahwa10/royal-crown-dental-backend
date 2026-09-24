@@ -251,4 +251,12 @@ export const getPrescriptionClinicId = async (prescriptionId: string) => {
     return consultation.clinicId;
 };
 
+export const deletePrescription = async (id: string) => {
+    const prescription = await getPrescriptionRecord(id);
+
+    await db.delete(prescriptions).where(eq(prescriptions.id, prescription.id));
+
+    return { id: prescription.id };
+};
+
 export { assertPrescriptionClinicAccess } from "./prescriptions.utils";

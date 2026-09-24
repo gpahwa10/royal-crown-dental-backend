@@ -5,6 +5,7 @@ import { getPatientDetails } from "../patients/patients.service";
 import { assertPatientClinicAccess } from "../patients/patients.utils";
 import {
     createLabRequest,
+    deleteLabRequest,
     deliverLabRequest,
     getLabRequestById,
     listLabRequests,
@@ -163,6 +164,27 @@ export const uploadLabReportHandler = async (
 
         const report = await uploadLabReport(id, body);
         return res.status(201).json({ success: true, data: report });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
+export const deleteLabRequestHandler = async (
+    req: AuthRequest,
+    res: Response
+) => {
+    try {
+        const { id } = labRequestIdParamSchema.parse(req.params);
+        const existing = await getLabRequestById(id);
+
+        assertLabRequestClinicAccess(
+            existing.request.clinicId,
+            hasPlatformAdminAccess(req.employee),
+            req.clinicId
+        );
+
+        const result = await deleteLabRequest(id);
+        return res.status(200).json({ success: true, data: result });
     } catch (error) {
         return handleError(res, error);
     }

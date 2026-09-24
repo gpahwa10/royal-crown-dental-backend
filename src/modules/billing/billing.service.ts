@@ -677,6 +677,27 @@ export const getFinancialTimelineEventsForPatient = async (
     return events;
 };
 
+export const deleteInvoice = async (id: string) => {
+    const invoice = await getInvoiceRecord(id);
+
+    await db.transaction(async (tx) => {
+        await tx
+            .update(clinicVisits)
+            .set({ invoiceId: null, updatedAt: new Date() })
+            .where(eq(clinicVisits.invoiceId, invoice.id));
+        await tx
+            .delete(patientMemberships)
+            .where(eq(patientMemberships.invoiceId, invoice.id));
+        await tx
+            .update(invoices)
+            .set({ invoicePdfFileId: null, updatedAt: new Date() })
+            .where(eq(invoices.id, invoice.id));
+        await tx.delete(invoices).where(eq(invoices.id, invoice.id));
+    });
+
+    return { id: invoice.id };
+};
+
 export const getPaymentById = async (id: string) => {
     const [payment] = await db
         .select()

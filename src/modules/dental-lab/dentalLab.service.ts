@@ -957,3 +957,17 @@ export const getDentalLabTimelineEventsForPatient = async (
 
     return events;
 };
+
+export const deleteDentalLabOrder = async (id: string) => {
+    const order = await getDentalLabOrderRecord(id);
+
+    await db.transaction(async (tx) => {
+        await tx
+            .update(appointments)
+            .set({ dentalLabOrderId: null, updatedAt: new Date() })
+            .where(eq(appointments.dentalLabOrderId, order.id));
+        await tx.delete(dentalLabOrders).where(eq(dentalLabOrders.id, order.id));
+    });
+
+    return { id: order.id };
+};

@@ -13,6 +13,7 @@ import {
     assertConsultationClinicAccess,
     completeConsultation,
     createConsultation,
+    deleteConsultation,
     getConsultationById,
     listConsultationsByPatientId,
     startConsultation,
@@ -194,6 +195,27 @@ export const listPatientConsultationsHandler = async (
 
         const items = await listConsultationsByPatientId(patientId);
         return res.status(200).json({ success: true, data: items });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
+export const deleteConsultationHandler = async (
+    req: AuthRequest,
+    res: Response
+) => {
+    try {
+        const { id } = consultationIdParamSchema.parse(req.params);
+        const existing = await getConsultationById(id);
+
+        assertConsultationClinicAccess(
+            existing.consultation.clinicId,
+            hasPlatformAdminAccess(req.employee),
+            req.clinicId
+        );
+
+        const result = await deleteConsultation(id);
+        return res.status(200).json({ success: true, data: result });
     } catch (error) {
         return handleError(res, error);
     }

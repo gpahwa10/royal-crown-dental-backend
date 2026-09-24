@@ -943,3 +943,11 @@ export const linkInvoiceToClinicVisit = async (
 
     return buildClinicVisitDetails(updated);
 };
+
+export const deleteClinicVisit = async (id: string) => {
+    const visit = await getClinicVisitRecord(id);
+
+    await db.delete(clinicVisits).where(eq(clinicVisits.id, visit.id));
+
+    return { id: visit.id };
+};

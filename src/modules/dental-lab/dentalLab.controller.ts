@@ -12,6 +12,7 @@ import {
     attachDentalLabFile,
     createCementationAppointment,
     createDentalLabOrder,
+    deleteDentalLabOrder,
     deliverDentalLabOrder,
     getDentalLabOrderById,
     listDentalLabOrders,
@@ -286,6 +287,27 @@ export const removeDentalLabFileHandler = async (
         );
 
         const result = await removeDentalLabFile(id, fileId);
+        return res.status(200).json({ success: true, data: result });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
+export const deleteDentalLabOrderHandler = async (
+    req: AuthRequest,
+    res: Response
+) => {
+    try {
+        const { id } = dentalLabOrderIdParamSchema.parse(req.params);
+        const existing = await getDentalLabOrderById(id);
+
+        assertDentalLabOrderClinicAccess(
+            existing.order.clinicId,
+            hasPlatformAdminAccess(req.employee),
+            req.clinicId
+        );
+
+        const result = await deleteDentalLabOrder(id);
         return res.status(200).json({ success: true, data: result });
     } catch (error) {
         return handleError(res, error);

@@ -4,6 +4,7 @@ import {
     cancelInvoiceHandler,
     createInvoiceHandler,
     createInvoicePaymentHandler,
+    deleteInvoiceHandler,
     getInvoiceHandler,
     listInvoicesHandler,
     updateInvoiceHandler,
@@ -18,6 +19,7 @@ router.get("/", listInvoicesHandler);
 router.get("/:id", getInvoiceHandler);
 router.patch("/:id", updateInvoiceHandler);
 router.patch("/:id/cancel", cancelInvoiceHandler);
+router.delete("/:id", deleteInvoiceHandler);
 router.post("/:id/payments", createInvoicePaymentHandler);
 
 export default router;

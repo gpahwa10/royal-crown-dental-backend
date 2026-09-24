@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { authenticate } from "../../middleware/auth.middleware";
 import {
+    deletePrescriptionHandler,
     getPrescriptionHandler,
     updatePrescriptionHandler,
 } from "./prescriptions.controller";
@@ -11,5 +12,6 @@ router.use(authenticate);
 
 router.get("/:id", getPrescriptionHandler);
 router.put("/:id", updatePrescriptionHandler);
+router.delete("/:id", deletePrescriptionHandler);
 
 export default router;

@@ -12,12 +12,20 @@ import {
 import { db } from "../../db/client";
 import { appointments } from "../../db/schema/appointments";
 import { clinics } from "../../db/schema/clinic";
+import { clinicVisits } from "../../db/schema/clinicVisits";
+import { consultations } from "../../db/schema/consultations";
+import { dentalLabOrders } from "../../db/schema/dentalLabOrders";
 import { employeeRoleAssignments } from "../../db/schema/employeeRoleAssignments";
 import { employees } from "../../db/schema/employees";
 import { leads } from "../../db/schema/leads";
 import { patients } from "../../db/schema/patients";
 import { employeeRoles } from "../../db/schema/roles";
 import { ROLE_DOCTOR } from "../auth/auth.constants";
+import {
+    ACTIVE_CLINIC_VISIT_STATUSES,
+    ClinicVisitPurpose,
+} from "../clinic-visits/clinicVisit.constants";
+import { generateVisitNumber } from "../clinic-visits/clinicVisit.utils";
 import { AppointmentStatus, AppointmentType } from "./appointments.constants";
 import {
     buildPaginationMeta,
@@ -26,14 +34,19 @@ import {
     getPagination,
 } from "./appointments.utils";
 import {
+    CLINIC_TIMEZONE,
+    DEFAULT_APPOINTMENT_DURATION_MINUTES,
+} from "../scheduling/scheduling.constants";
+import {
     clinicCalendarDayEnd,
     clinicCalendarDayStart,
+    endOfZonedDay,
+    startOfZonedDay,
 } from "../scheduling/scheduling.utils";
 import {
     assertAppointmentScheduleValid,
     listAvailableDoctors,
 } from "../scheduling/scheduling.service";
-import { DEFAULT_APPOINTMENT_DURATION_MINUTES } from "../scheduling/scheduling.constants";
 
 export interface CreateAppointmentInput {
     clinicId: string;
@@ -46,6 +59,17 @@ export interface CreateAppointmentInput {
     symptoms?: string;
     appointmentType?: AppointmentType;
     dentalLabOrderId?: string;
+}
+
+export interface CreateWalkInAppointmentInput {
+    clinicId: string;
+    patientId?: string;
+    leadId?: string;
+    employeeId?: string;
+    symptoms?: string;
+    purpose?: ClinicVisitPurpose;
+    notes?: string;
+    createdBy?: string;
 }
 
 export interface ListAppointmentsOptions {
@@ -82,8 +106,10 @@ export type AppointmentWithDetails = {
     patientName: string | null;
     leadId: string | null;
     leadName: string | null;
+    appointmentType: AppointmentType;
     scheduledAt: Date;
     status: AppointmentStatus;
+    checkedInAt: Date | null;
     symptoms: string | null;
     createdAt: Date;
     updatedAt: Date;
@@ -106,7 +132,13 @@ const assertClinicExists = async (clinicId: string) => {
 
 const assertPatientExists = async (patientId: string) => {
     const [patient] = await db
-        .select({ id: patients.id, clinicId: patients.clinicId })
+        .select({
+            id: patients.id,
+            clinicId: patients.clinicId,
+            name: patients.name,
+            phone: patients.phone,
+            email: patients.email,
+        })
         .from(patients)
         .where(eq(patients.id, patientId));
 
@@ -270,8 +302,10 @@ const enrichAppointments = async (
             : null,
         leadId: row.leadId,
         leadName: row.leadId ? (leadNameById.get(row.leadId) ?? null) : null,
+        appointmentType: row.appointmentType,
         scheduledAt: row.scheduledAt,
         status: row.status ?? "scheduled",
+        checkedInAt: row.checkedInAt,
         symptoms: row.symptoms,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
@@ -391,6 +425,130 @@ export const createAppointment = async (input: CreateAppointmentInput) => {
 
     const [enriched] = await enrichAppointments([appointment]);
     return enriched;
+};
+
+const assertNoActiveWalkInCheckIn = async (
+    clinicId: string,
+    visitorPhone: string,
+    visitDate: Date
+) => {
+    const [existing] = await db
+        .select({ id: clinicVisits.id })
+        .from(clinicVisits)
+        .where(
+            and(
+                eq(clinicVisits.clinicId, clinicId),
+                eq(clinicVisits.visitorPhone, visitorPhone),
+                inArray(clinicVisits.status, [...ACTIVE_CLINIC_VISIT_STATUSES]),
+                gte(
+                    clinicVisits.visitDate,
+                    startOfZonedDay(CLINIC_TIMEZONE, visitDate)
+                ),
+                lte(
+                    clinicVisits.visitDate,
+                    endOfZonedDay(CLINIC_TIMEZONE, visitDate)
+                )
+            )
+        )
+        .limit(1);
+
+    if (existing) {
+        throw new Error("Duplicate check-in");
+    }
+};
+
+export const createWalkInAppointment = async (
+    input: CreateWalkInAppointmentInput
+) => {
+    const { patientId, leadRecord } = await resolveCreateContext(input);
+    const now = new Date();
+
+    const patient = patientId ? await assertPatientExists(patientId) : null;
+    const visitorName = patient?.name ?? leadRecord?.name;
+    const visitorPhone = patient?.phone ?? leadRecord?.phone;
+    const visitorEmail = patient?.email ?? leadRecord?.email ?? undefined;
+
+    if (!visitorName || !visitorPhone) {
+        throw new Error("Visitor name and phone are required for walk-in");
+    }
+
+    await assertNoActiveWalkInCheckIn(input.clinicId, visitorPhone, now);
+
+    const result = await db.transaction(async (tx) => {
+        const appointmentCode = await generateAppointmentCode(tx);
+        const [appointment] = await tx
+            .insert(appointments)
+            .values({
+                appointmentCode,
+                clinicId: input.clinicId,
+                patientId,
+                leadId: input.leadId,
+                employeeId: input.employeeId,
+                scheduledAt: now,
+                durationMinutes: DEFAULT_APPOINTMENT_DURATION_MINUTES,
+                symptoms: input.symptoms ?? leadRecord?.symptoms ?? undefined,
+                status: "checked_in",
+                checkedInAt: now,
+                appointmentType: "walk_in",
+            })
+            .returning();
+
+        const visitNumber = await generateVisitNumber(tx);
+        const [visit] = await tx
+            .insert(clinicVisits)
+            .values({
+                visitNumber,
+                clinicId: input.clinicId,
+                patientId: patientId ?? null,
+                leadId: input.leadId ?? null,
+                appointmentId: appointment.id,
+                visitorName,
+                visitorPhone,
+                visitorEmail: visitorEmail ?? null,
+                doctorId: input.employeeId ?? null,
+                visitDate: now,
+                checkInTime: now,
+                purpose: input.purpose ?? "consultation",
+                status: "checked_in",
+                isRegistered: Boolean(patientId),
+                notes: input.notes ?? input.symptoms ?? null,
+                createdBy: input.createdBy ?? null,
+                createdAt: now,
+                updatedAt: now,
+            })
+            .returning();
+
+        if (input.leadId) {
+            await tx
+                .update(leads)
+                .set({
+                    status: "appointment_booked",
+                    clinicId: input.clinicId,
+                    patientId: patientId ?? leadRecord?.patientId,
+                    symptoms: input.symptoms ?? leadRecord?.symptoms,
+                    updatedAt: now,
+                })
+                .where(eq(leads.id, input.leadId));
+        }
+
+        return { appointment, visit };
+    });
+
+    const [enriched] = await enrichAppointments([result.appointment]);
+    return {
+        appointment: enriched,
+        visit: {
+            id: result.visit.id,
+            visitNumber: result.visit.visitNumber,
+            status: result.visit.status,
+            purpose: result.visit.purpose,
+            visitDate: result.visit.visitDate,
+            checkInTime: result.visit.checkInTime,
+            patientId: result.visit.patientId,
+            appointmentId: result.visit.appointmentId,
+            doctorId: result.visit.doctorId,
+        },
+    };
 };
 
 export const listAppointments = async (options: ListAppointmentsOptions) => {
@@ -674,4 +832,26 @@ export const shiftAppointmentClinic = async (
 
     const [enriched] = await enrichAppointments([updated]);
     return enriched;
+};
+
+export const deleteAppointment = async (id: string) => {
+    const appointment = await getAppointmentRecord(id);
+
+    await db.transaction(async (tx) => {
+        await tx
+            .update(consultations)
+            .set({ appointmentId: null, updatedAt: new Date() })
+            .where(eq(consultations.appointmentId, appointment.id));
+        await tx
+            .update(clinicVisits)
+            .set({ appointmentId: null, updatedAt: new Date() })
+            .where(eq(clinicVisits.appointmentId, appointment.id));
+        await tx
+            .update(dentalLabOrders)
+            .set({ cementationAppointmentId: null, updatedAt: new Date() })
+            .where(eq(dentalLabOrders.cementationAppointmentId, appointment.id));
+        await tx.delete(appointments).where(eq(appointments.id, appointment.id));
+    });
+
+    return { id: appointment.id };
 };

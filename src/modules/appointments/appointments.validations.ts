@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CLINIC_VISIT_PURPOSES } from "../clinic-visits/clinicVisit.constants";
 import { APPOINTMENT_STATUSES } from "./appointments.constants";
 
 const scheduledAtInputRefine = (
@@ -106,6 +107,26 @@ export const updateAppointmentStatusSchema = z.object({
 export const shiftAppointmentClinicSchema = z.object({
     newClinicId: z.uuid(),
 });
+
+export const createWalkInAppointmentSchema = z
+    .object({
+        clinicId: z.uuid().optional(),
+        patientId: z.uuid().optional(),
+        leadId: z.uuid().optional(),
+        employeeId: z.uuid().optional(),
+        symptoms: z.string().trim().optional(),
+        purpose: z.enum(CLINIC_VISIT_PURPOSES).optional().default("consultation"),
+        notes: z.string().trim().optional(),
+    })
+    .superRefine((data, ctx) => {
+        if (!data.patientId && !data.leadId) {
+            ctx.addIssue({
+                code: "custom",
+                message: "patientId or leadId is required",
+                path: ["patientId"],
+            });
+        }
+    });
 
 export const availableDoctorsQuerySchema = z.object({
     clinicId: z.uuid().optional(),

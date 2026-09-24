@@ -27,6 +27,7 @@ import paymentsRoutes, {
 } from "./modules/payments/payments.routes";
 import analyticsRoutes from "./modules/analytics/analytics.routes";
 import odontogramsRoutes from "./modules/odontograms/odontograms.routes";
+import radiographsRoutes from "./modules/radiographs/radiographs.routes";
 
 export const app = express();
 app.use(
@@ -72,3 +73,4 @@ app.use("/api/invoices", invoicePaymentsRouter);
 app.use("/api/payments", paymentsRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/odontograms", odontogramsRoutes);
+app.use("/api/radiographs", radiographsRoutes);

@@ -7,6 +7,7 @@ import {
     convertLeadToPatient,
     createLead,
     createPublicLead,
+    deleteLead,
     getLeadById,
     listLeads,
     updateLead,
@@ -187,6 +188,24 @@ export const bookLeadAppointmentHandler = async (
 
         const lead = await bookLeadAppointment(id, { ...body, clinicId });
         return res.status(200).json({ success: true, data: lead });
+    } catch (error) {
+        return handleError(res, error);
+    }
+};
+
+export const deleteLeadHandler = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = leadParamsSchema.parse(req.params);
+        const existing = await getLeadById(id);
+
+        assertLeadClinicAccess(
+            existing.clinicId,
+            hasPlatformAdminAccess(req.employee),
+            req.clinicId
+        );
+
+        const result = await deleteLead(id);
+        return res.status(200).json({ success: true, data: result });
     } catch (error) {
         return handleError(res, error);
     }

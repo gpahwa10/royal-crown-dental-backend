@@ -11,6 +11,7 @@ import {
 import { db } from "../../db/client";
 import { appointments } from "../../db/schema/appointments";
 import { clinics } from "../../db/schema/clinic";
+import { clinicVisits } from "../../db/schema/clinicVisits";
 import { employeeRoleAssignments } from "../../db/schema/employeeRoleAssignments";
 import { employees } from "../../db/schema/employees";
 import { leads } from "../../db/schema/leads";
@@ -628,6 +629,24 @@ export const convertLeadToPatient = async (
 
     const [enriched] = await enrichLeads([updated]);
     return enriched;
+};
+
+export const deleteLead = async (id: string) => {
+    const lead = await getLeadRecord(id);
+
+    await db.transaction(async (tx) => {
+        await tx
+            .update(appointments)
+            .set({ leadId: null, updatedAt: new Date() })
+            .where(eq(appointments.leadId, lead.id));
+        await tx
+            .update(clinicVisits)
+            .set({ leadId: null, updatedAt: new Date() })
+            .where(eq(clinicVisits.leadId, lead.id));
+        await tx.delete(leads).where(eq(leads.id, lead.id));
+    });
+
+    return { id: lead.id };
 };
 
 export const assertLeadClinicAccess = (

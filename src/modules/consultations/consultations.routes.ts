@@ -4,6 +4,7 @@ import {
     completeConsultationHandler,
     createConsultationHandler,
     createConsultationPrescriptionHandler,
+    deleteConsultationHandler,
     getConsultationHandler,
     listConsultationPatientsHandler,
     startConsultationHandler,
@@ -25,6 +26,7 @@ router.post("/", createConsultationHandler);
 router.get("/patients", listConsultationPatientsHandler);
 router.get("/:id", getConsultationHandler);
 router.put("/:id", updateConsultationHandler);
+router.delete("/:id", deleteConsultationHandler);
 router.post("/:id/start", startConsultationHandler);
 router.post("/:id/complete", completeConsultationHandler);
 router.post("/:id/prescription", createConsultationPrescriptionHandler);

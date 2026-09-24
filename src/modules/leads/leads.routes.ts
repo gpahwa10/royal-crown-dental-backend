@@ -5,6 +5,7 @@ import {
     convertLeadToPatientHandler,
     createLeadHandler,
     createPublicLeadHandler,
+    deleteLeadHandler,
     getLeadByIdHandler,
     listLeadsHandler,
     updateLeadHandler,
@@ -20,6 +21,7 @@ router.use(authenticate);
 router.post("/", createLeadHandler);
 router.get("/", listLeadsHandler);
 router.get("/:id", getLeadByIdHandler);
+router.delete("/:id", deleteLeadHandler);
 router.patch("/:id/status", updateLeadStatusHandler);
 router.put("/:id", updateLeadHandler);
 router.post("/:id/book-appointment", bookLeadAppointmentHandler);

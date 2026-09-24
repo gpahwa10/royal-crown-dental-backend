@@ -6,6 +6,7 @@ import {
     createAppointmentFromVisitHandler,
     createClinicVisitHandler,
     createMembershipFromVisitHandler,
+    deleteClinicVisitHandler,
     getClinicVisitDashboardHandler,
     getClinicVisitHandler,
     listClinicVisitsHandler,
@@ -23,6 +24,7 @@ router.post("/", createClinicVisitHandler);
 router.get("/", listClinicVisitsHandler);
 router.get("/:id", getClinicVisitHandler);
 router.patch("/:id", updateClinicVisitHandler);
+router.delete("/:id", deleteClinicVisitHandler);
 router.patch("/:id/check-out", checkOutClinicVisitHandler);
 router.post("/:id/register-patient", registerPatientFromVisitHandler);
 router.post("/:id/start-consultation", startConsultationFromVisitHandler);

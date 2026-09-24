@@ -29,6 +29,7 @@ export const appointmentTypeEnum = pgEnum("appointment_type", [
   "consultation",
   "treatment",
   "follow_up",
+  "walk_in",
 ]);
 
 export const appointments = pgTable(

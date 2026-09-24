@@ -12,6 +12,7 @@ export const APPOINTMENT_TYPES = [
     "consultation",
     "treatment",
     "follow_up",
+    "walk_in",
 ] as const;
 
 export const APPOINTMENT_CODE_PREFIX = "APT";
