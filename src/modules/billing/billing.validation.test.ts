@@ -50,4 +50,23 @@ describe("billing.validation", () => {
         expect(result.discountAmount).toBe(1000);
         expect(result.quantity).toBe(1);
     });
+
+    it("accepts billedAt on create and rejects future billedAt", () => {
+        const past = createInvoiceSchema.parse({
+            patientId: "a1b2c3d4-e5f6-4a1b-8c2d-3e4f5a6b7c8d",
+            billedAt: "2024-11-03T10:30:00.000Z",
+            sourceType: "consultation",
+            sourceId: "b2c3d4e5-f6a1-4b2c-9d3e-4f5a6b7c8d9e",
+            items: [{ serviceName: "Consultation", unitPrice: 500 }],
+        });
+        expect(past.billedAt?.toISOString()).toBe("2024-11-03T10:30:00.000Z");
+
+        expect(() =>
+            createInvoiceSchema.parse({
+                patientId: "a1b2c3d4-e5f6-4a1b-8c2d-3e4f5a6b7c8d",
+                billedAt: new Date(Date.now() + 86_400_000).toISOString(),
+                items: [{ serviceName: "Consultation", unitPrice: 500 }],
+            })
+        ).toThrow(/billedAt cannot be in the future/);
+    });
 });

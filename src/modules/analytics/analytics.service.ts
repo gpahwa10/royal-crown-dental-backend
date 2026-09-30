@@ -278,7 +278,7 @@ const sumInvoiceFieldInRange = async (
             .where(
                 and(
                     clinicFilter(invoices.clinicId, scope.clinicId),
-                    dateBetween(invoices.createdAt, startDate, endDate),
+                    dateBetween(invoices.billedAt, startDate, endDate),
                     statuses ? inArray(invoices.status, statuses as any) : ne(invoices.status, "cancelled"),
                     scope.doctorId
                         ? eq(invoices.generatedBy, scope.doctorId)
@@ -322,7 +322,7 @@ const sumInvoiceBySource = async (
                 and(
                     clinicFilter(invoices.clinicId, scope.clinicId),
                     eq(invoices.sourceType, sourceType as any),
-                    dateBetween(invoices.createdAt, startDate, endDate),
+                    dateBetween(invoices.billedAt, startDate, endDate),
                     ne(invoices.status, "cancelled")
                 )
             )
@@ -644,11 +644,11 @@ const getRecentActivities = async (
                     clinicId: invoices.clinicId,
                     patientId: invoices.patientId,
                     invoiceNumber: invoices.invoiceNumber,
-                    occurredAt: invoices.createdAt,
+                    occurredAt: invoices.billedAt,
                 })
                 .from(invoices)
                 .where(clinicFilter(invoices.clinicId, scope.clinicId))
-                .orderBy(desc(invoices.createdAt))
+                .orderBy(desc(invoices.billedAt))
                 .limit(5),
             db
                 .select({
@@ -780,7 +780,7 @@ const getTopClinics = async (
         .where(
             and(
                 dateBetween(
-                    invoices.createdAt,
+                    invoices.billedAt,
                     dateRange.startDate,
                     dateRange.endDate
                 ),
@@ -905,7 +905,7 @@ export const getDashboardAnalytics = async (
         countAppointmentsInRange(scope, startOfToday(), endOfToday()),
         buildTimeSeries({
             table: invoices,
-            dateColumn: invoices.createdAt,
+            dateColumn: invoices.billedAt,
             valueExpr: invoices.grandTotal,
             scopeClinicColumn: invoices.clinicId,
             scopeClinicId: scope.clinicId,
@@ -1142,7 +1142,7 @@ export const getRevenueAnalytics = async (
         sumInvoiceBySource("manual", scope, startDate, endDate),
         buildTimeSeries({
             table: invoices,
-            dateColumn: invoices.createdAt,
+            dateColumn: invoices.billedAt,
             valueExpr: invoices.grandTotal,
             scopeClinicColumn: invoices.clinicId,
             scopeClinicId: scope.clinicId,

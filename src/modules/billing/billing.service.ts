@@ -12,6 +12,7 @@ import {
 import { db } from "../../db/client";
 import { clinicVisits } from "../../db/schema/clinicVisits";
 import { clinics } from "../../db/schema/clinic";
+import { consultations } from "../../db/schema/consultations";
 import { invoiceItems } from "../../db/schema/invoices_items";
 import { invoices } from "../../db/schema/invoices";
 import { patients } from "../../db/schema/patients";
@@ -39,6 +40,7 @@ export interface CreateInvoiceInput {
     clinicVisitId?: string;
     sourceType?: InvoiceSourceType;
     sourceId?: string | null;
+    billedAt?: Date;
     manualDiscount?: number;
     items: InvoiceLineInput[];
     generatedBy?: string;
@@ -46,8 +48,9 @@ export interface CreateInvoiceInput {
 }
 
 export interface UpdateInvoiceInput {
-    items: InvoiceLineInput[];
+    items?: InvoiceLineInput[];
     manualDiscount?: number;
+    billedAt?: Date;
 }
 
 export interface RecordInvoicePaymentInput {
@@ -166,7 +169,7 @@ const attachInvoicePdf = async (
         invoiceNumber: invoice.invoiceNumber,
         patientName,
         clinicName,
-        createdAt: invoice.createdAt,
+        createdAt: invoice.billedAt ?? invoice.createdAt,
         items: items.map((item) => ({
             serviceName: item.serviceName,
             quantity: item.quantity,
@@ -279,6 +282,46 @@ const calculateInvoiceFromCatalog = async (input: {
     );
 };
 
+const resolveBilledAt = async (input: {
+    billedAt?: Date;
+    sourceType?: InvoiceSourceType;
+    sourceId?: string | null;
+    patientId: string;
+    clinicId: string;
+}) => {
+    if (input.billedAt) {
+        if (input.billedAt.getTime() > Date.now() + 60_000) {
+            throw new Error("billedAt cannot be in the future");
+        }
+        return input.billedAt;
+    }
+
+    if (input.sourceType === "consultation" && input.sourceId) {
+        const [consultation] = await db
+            .select({
+                id: consultations.id,
+                patientId: consultations.patientId,
+                clinicId: consultations.clinicId,
+                consultedAt: consultations.consultedAt,
+            })
+            .from(consultations)
+            .where(eq(consultations.id, input.sourceId));
+
+        if (!consultation) {
+            throw new Error("Consultation not found");
+        }
+        if (consultation.patientId !== input.patientId) {
+            throw new Error("Consultation does not belong to this patient");
+        }
+        if (consultation.clinicId !== input.clinicId) {
+            throw new Error("Consultation does not belong to the selected clinic");
+        }
+        return consultation.consultedAt;
+    }
+
+    return new Date();
+};
+
 export const createInvoice = async (input: CreateInvoiceInput) => {
     const patient = await assertPatientExists(input.patientId);
     if (patient.clinicId !== input.clinicId) {
@@ -304,6 +347,13 @@ export const createInvoice = async (input: CreateInvoiceInput) => {
     });
 
     const now = new Date();
+    const billedAt = await resolveBilledAt({
+        billedAt: input.billedAt,
+        sourceType: input.sourceType,
+        sourceId: input.sourceId,
+        patientId: input.patientId,
+        clinicId: input.clinicId,
+    });
 
     const invoice = await db.transaction(async (tx) => {
         const invoiceNumber = await generateInvoiceNumber(tx);
@@ -325,6 +375,7 @@ export const createInvoice = async (input: CreateInvoiceInput) => {
                 balanceAmount: calculation.grandTotal,
                 status: "pending",
                 generatedBy: input.generatedBy ?? null,
+                billedAt,
                 createdAt: now,
                 updatedAt: now,
             })
@@ -378,8 +429,37 @@ export const updateInvoice = async (id: string, input: UpdateInvoiceInput) => {
         throw new Error("Only pending invoices can be edited");
     }
 
+    if (input.billedAt && input.billedAt.getTime() > Date.now() + 60_000) {
+        throw new Error("billedAt cannot be in the future");
+    }
+
     const patient = await assertPatientExists(invoice.patientId);
     const clinic = await assertClinicExists(invoice.clinicId);
+    const now = new Date();
+
+    if (!input.items) {
+        const [updated] = await db
+            .update(invoices)
+            .set({
+                ...(input.billedAt !== undefined && { billedAt: input.billedAt }),
+                updatedAt: now,
+            })
+            .where(eq(invoices.id, id))
+            .returning();
+
+        if (input.billedAt !== undefined) {
+            const items = await getInvoiceItems(updated.id);
+            const withPdf = await attachInvoicePdf(
+                updated,
+                patient.name,
+                clinic.clinicName,
+                items
+            );
+            return buildInvoiceDetails(withPdf);
+        }
+
+        return buildInvoiceDetails(updated);
+    }
 
     const calculation = await calculateInvoiceFromCatalog({
         clinicId: invoice.clinicId,
@@ -387,8 +467,6 @@ export const updateInvoice = async (id: string, input: UpdateInvoiceInput) => {
         items: input.items,
         manualDiscount: input.manualDiscount,
     });
-
-    const now = new Date();
 
     const updated = await db.transaction(async (tx) => {
         await tx.delete(invoiceItems).where(eq(invoiceItems.invoiceId, id));
@@ -418,6 +496,7 @@ export const updateInvoice = async (id: string, input: UpdateInvoiceInput) => {
                 amountPaid: 0,
                 balanceAmount: calculation.grandTotal,
                 status: "pending",
+                ...(input.billedAt !== undefined && { billedAt: input.billedAt }),
                 updatedAt: now,
             })
             .where(eq(invoices.id, id))
@@ -485,7 +564,7 @@ export const listInvoices = async (options: {
         .from(invoices)
         .innerJoin(patients, eq(invoices.patientId, patients.id))
         .where(whereClause)
-        .orderBy(desc(invoices.createdAt))
+        .orderBy(desc(invoices.billedAt), desc(invoices.createdAt))
         .limit(limit)
         .offset(offset);
 
@@ -586,7 +665,7 @@ export const listInvoicesByPatientId = async (patientId: string) => {
         .select()
         .from(invoices)
         .where(eq(invoices.patientId, patientId))
-        .orderBy(desc(invoices.createdAt));
+        .orderBy(desc(invoices.billedAt), desc(invoices.createdAt));
 
     return Promise.all(rows.map((row) => buildInvoiceDetails(row)));
 };
@@ -643,7 +722,7 @@ export const getFinancialTimelineEventsForPatient = async (
     for (const invoice of invoiceRows) {
         events.push({
             type: "invoice_generated",
-            date: invoice.createdAt.toISOString(),
+            date: (invoice.billedAt ?? invoice.createdAt).toISOString(),
         });
 
         if (invoice.status === "cancelled") {

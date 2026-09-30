@@ -40,20 +40,59 @@ export const invoiceLineItemSchema = z
         message: "Either serviceId or serviceName must be provided",
     });
 
-export const createInvoiceSchema = z.object({
-    patientId: z.uuid(),
-    clinicId: z.uuid().optional(),
-    clinicVisitId: z.uuid().optional(),
-    sourceType: z.enum(INVOICE_SOURCE_TYPES).default("manual"),
-    sourceId: z.uuid().nullable().optional(),
-    manualDiscount: z.coerce.number().int().min(0).default(0),
-    items: z.array(invoiceLineItemSchema).min(1),
-});
+export const createInvoiceSchema = z
+    .object({
+        patientId: z.uuid(),
+        clinicId: z.uuid().optional(),
+        clinicVisitId: z.uuid().optional(),
+        sourceType: z.enum(INVOICE_SOURCE_TYPES).default("manual"),
+        sourceId: z.uuid().nullable().optional(),
+        billedAt: z.coerce.date().optional(),
+        manualDiscount: z.coerce.number().int().min(0).default(0),
+        items: z.array(invoiceLineItemSchema).min(1),
+    })
+    .superRefine((data, ctx) => {
+        if (data.billedAt && data.billedAt.getTime() > Date.now() + 60_000) {
+            ctx.addIssue({
+                code: "custom",
+                message: "billedAt cannot be in the future",
+                path: ["billedAt"],
+            });
+        }
+    });
 
-export const updateInvoiceSchema = z.object({
-    items: z.array(invoiceLineItemSchema).min(1),
-    manualDiscount: z.coerce.number().int().min(0).default(0),
-});
+export const updateInvoiceSchema = z
+    .object({
+        items: z.array(invoiceLineItemSchema).min(1).optional(),
+        manualDiscount: z.coerce.number().int().min(0).optional(),
+        billedAt: z.coerce.date().optional(),
+    })
+    .superRefine((data, ctx) => {
+        if (
+            data.items === undefined &&
+            data.manualDiscount === undefined &&
+            data.billedAt === undefined
+        ) {
+            ctx.addIssue({
+                code: "custom",
+                message: "At least one field is required",
+            });
+        }
+        if (data.manualDiscount !== undefined && data.items === undefined) {
+            ctx.addIssue({
+                code: "custom",
+                message: "items are required when updating manualDiscount",
+                path: ["items"],
+            });
+        }
+        if (data.billedAt && data.billedAt.getTime() > Date.now() + 60_000) {
+            ctx.addIssue({
+                code: "custom",
+                message: "billedAt cannot be in the future",
+                path: ["billedAt"],
+            });
+        }
+    });
 
 export const invoiceListQuerySchema = z.object({
     page: z.coerce.number().int().min(1).default(1),

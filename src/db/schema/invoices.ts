@@ -72,6 +72,8 @@ export const invoices = pgTable(
 
         invoicePdfFileId: uuid("invoice_pdf_file_id").references(() => files.id),
 
+        billedAt: timestamp("billed_at").defaultNow().notNull(),
+
         createdAt: timestamp("created_at").defaultNow().notNull(),
 
         updatedAt: timestamp("updated_at").defaultNow().notNull(),
