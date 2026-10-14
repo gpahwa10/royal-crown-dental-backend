@@ -1,5 +1,6 @@
 import {
     and,
+    asc,
     count,
     desc,
     eq,
@@ -597,7 +598,7 @@ export const listPatients = async (options: ListPatientsOptions) => {
         .select()
         .from(patients)
         .where(whereClause)
-        .orderBy(desc(patients.createdAt))
+        .orderBy(asc(patients.name), asc(patients.patientCode))
         .limit(limit)
         .offset(offset);
 

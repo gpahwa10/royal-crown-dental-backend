@@ -1,6 +1,6 @@
 import { Response } from "express";
 import { AuthRequest } from "../../middleware/auth.middleware";
-import { hasPlatformAdminAccess } from "../auth/auth.constants";
+import { hasPlatformAdminAccess, isDoctorEmployee, normalizeRoleName, ROLE_ASSISTANT, ROLE_RECEPTION } from "../auth/auth.constants";
 import {
     assertAppointmentClinicAccess,
     assertAppointmentShiftAccess,
@@ -31,6 +31,37 @@ const resolveClinicId = (
     _requestedClinicId?: string
 ): string | undefined => {
     return req.clinicId;
+};
+
+const seesAllDoctorAppointments = (req: AuthRequest) => {
+    if (hasPlatformAdminAccess(req.employee)) {
+        return true;
+    }
+
+    const roles = (req.employee?.roles ?? []).map(normalizeRoleName);
+    return roles.includes(ROLE_RECEPTION) || roles.includes(ROLE_ASSISTANT);
+};
+
+const resolveAppointmentDoctorFilter = (
+    req: AuthRequest,
+    employeeId?: string
+) => {
+    if (seesAllDoctorAppointments(req)) {
+        if (
+            hasPlatformAdminAccess(req.employee) &&
+            employeeId &&
+            employeeId === req.employee?.id
+        ) {
+            return undefined;
+        }
+        return employeeId;
+    }
+
+    if (isDoctorEmployee(req.employee)) {
+        return req.employee?.id;
+    }
+
+    return employeeId;
 };
 
 export const listAvailableDoctorsHandler = async (
@@ -142,7 +173,7 @@ export const listAppointmentsHandler = async (
             limit: query.limit,
             clinicId,
             status: query.status,
-            employeeId: query.employeeId,
+            employeeId: resolveAppointmentDoctorFilter(req, query.employeeId),
             patientId: query.patientId,
             leadId: query.leadId,
             dateFrom: query.dateFrom,
@@ -224,7 +255,11 @@ export const updateAppointmentStatusHandler = async (
             req.clinicId
         );
 
-        const appointment = await updateAppointmentStatus(id, body.status);
+        const appointment = await updateAppointmentStatus(
+            id,
+            body.status,
+            body.cancelledReason
+        );
         return res.status(200).json({ success: true, data: appointment });
     } catch (error) {
         return handleError(res, error);

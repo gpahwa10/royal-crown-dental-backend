@@ -19,6 +19,7 @@ export interface PatientOdontogramData {
     statusChart: Record<string, unknown>;
     planChart: Record<string, unknown> | null;
     version: number;
+    readOnly: true;
     createdAt?: Date;
     updatedAt: Date;
 }

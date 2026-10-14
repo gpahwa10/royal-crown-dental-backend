@@ -163,6 +163,7 @@ export const getPatientCurrentOdontogram = async (
         statusChart: record.statusChart,
         planChart: record.planChart ?? {},
         version: record.version,
+        readOnly: true,
         createdAt: record.createdAt,
         updatedAt: record.updatedAt,
     };

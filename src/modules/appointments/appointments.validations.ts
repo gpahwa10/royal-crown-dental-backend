@@ -102,6 +102,7 @@ export const updateAppointmentSchema = z
 
 export const updateAppointmentStatusSchema = z.object({
     status: z.enum(APPOINTMENT_STATUSES),
+    cancelledReason: z.string().trim().min(1).optional(),
 });
 
 export const shiftAppointmentClinicSchema = z.object({

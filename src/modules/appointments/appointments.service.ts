@@ -741,7 +741,8 @@ export const getAvailableDoctorsForSlot = listAvailableDoctors;
 
 export const updateAppointmentStatus = async (
     id: string,
-    status: AppointmentStatus
+    status: AppointmentStatus,
+    cancelledReason?: string
 ) => {
     const appointment = await getAppointmentRecord(id);
 
@@ -749,6 +750,9 @@ export const updateAppointmentStatus = async (
         .update(appointments)
         .set({
             status,
+            ...(status === "cancelled" && {
+                cancelledReason: cancelledReason ?? appointment.cancelledReason,
+            }),
             updatedAt: new Date(),
         })
         .where(eq(appointments.id, appointment.id))

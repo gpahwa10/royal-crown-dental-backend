@@ -128,6 +128,17 @@ export const updateConsultationHandler = async (
             req.clinicId
         );
 
+        if (
+            body.doctorId &&
+            body.doctorId !== existing.consultation.doctorId &&
+            !hasPlatformAdminAccess(req.employee)
+        ) {
+            return res.status(403).json({
+                success: false,
+                message: "Only a super admin can change the attending doctor",
+            });
+        }
+
         const consultation = await updateConsultation(id, body);
         return res.status(200).json({ success: true, data: consultation });
     } catch (error) {

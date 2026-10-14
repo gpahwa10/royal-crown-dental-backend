@@ -22,6 +22,10 @@ import {
     finalizeConsultationOdontogram,
     getConsultationOdontogram,
 } from "../odontograms/odontograms.service";
+import {
+    createAppointment,
+    updateAppointment,
+} from "../appointments/appointments.service";
 import { generateConsultationCode } from "./consultations.utils";
 
 export interface CreateConsultationInput {
@@ -36,6 +40,8 @@ export interface CreateConsultationInput {
     nextVisitDate?: Date;
     consultedAt?: Date;
     markCompleted?: boolean;
+    appointmentDate?: string;
+    appointmentTime?: string;
 }
 
 export interface UpdateConsultationInput {
@@ -45,6 +51,9 @@ export interface UpdateConsultationInput {
     clinicalNotes?: string | null;
     nextVisitDate?: Date | string | null;
     consultedAt?: Date;
+    doctorId?: string;
+    appointmentDate?: string;
+    appointmentTime?: string;
     consentRequired?: boolean;
     consentSigned?: boolean;
     consentSignatureUrl?: string | null;
@@ -156,6 +165,45 @@ export const getConsultationRecord = async (id: string) => {
     return consultation;
 };
 
+const bookConsultationSlot = async (input: {
+    clinicId: string;
+    patientId: string;
+    doctorId: string;
+    appointmentDate?: string;
+    appointmentTime?: string;
+    symptoms?: string;
+    existingAppointmentId?: string | null;
+}) => {
+    if (!input.appointmentDate && !input.appointmentTime) {
+        return null;
+    }
+
+    if (!input.appointmentDate || !input.appointmentTime) {
+        throw new Error(
+            "appointmentDate and appointmentTime are both required to book a slot"
+        );
+    }
+
+    if (input.existingAppointmentId) {
+        return updateAppointment(input.existingAppointmentId, {
+            employeeId: input.doctorId,
+            appointmentDate: input.appointmentDate,
+            appointmentTime: input.appointmentTime,
+            symptoms: input.symptoms,
+        });
+    }
+
+    return createAppointment({
+        clinicId: input.clinicId,
+        patientId: input.patientId,
+        employeeId: input.doctorId,
+        appointmentDate: input.appointmentDate,
+        appointmentTime: input.appointmentTime,
+        symptoms: input.symptoms,
+        appointmentType: "consultation",
+    });
+};
+
 export const createConsultation = async (input: CreateConsultationInput) => {
     const [patient] = await Promise.all([
         assertPatientExists(input.patientId),
@@ -201,7 +249,29 @@ export const createConsultation = async (input: CreateConsultationInput) => {
         return [created];
     });
 
-    return consultation;
+    if (input.appointmentId || !input.appointmentDate || !input.appointmentTime) {
+        return consultation;
+    }
+
+    const appointment = await bookConsultationSlot({
+        clinicId: input.clinicId,
+        patientId: input.patientId,
+        doctorId: input.doctorId,
+        appointmentDate: input.appointmentDate,
+        appointmentTime: input.appointmentTime,
+        symptoms: input.chiefComplaint,
+    });
+
+    const [linked] = await db
+        .update(consultations)
+        .set({
+            appointmentId: appointment?.id,
+            updatedAt: new Date(),
+        })
+        .where(eq(consultations.id, consultation.id))
+        .returning();
+
+    return { ...linked, appointment };
 };
 
 export const getConsultationById = async (id: string) => {
@@ -233,6 +303,34 @@ export const updateConsultation = async (
               ? null
               : undefined;
 
+    if (input.doctorId && input.doctorId !== consultation.doctorId) {
+        await assertDoctorInClinic(input.doctorId, consultation.clinicId);
+    }
+
+    const doctorId = input.doctorId ?? consultation.doctorId;
+    const slotRequested = Boolean(input.appointmentDate && input.appointmentTime);
+    const appointment = slotRequested
+        ? await bookConsultationSlot({
+              clinicId: consultation.clinicId,
+              patientId: consultation.patientId,
+              doctorId,
+              appointmentDate: input.appointmentDate,
+              appointmentTime: input.appointmentTime,
+              symptoms: input.chiefComplaint ?? consultation.chiefComplaint,
+              existingAppointmentId: consultation.appointmentId,
+          })
+        : null;
+
+    if (
+        input.doctorId &&
+        consultation.appointmentId &&
+        !slotRequested
+    ) {
+        await updateAppointment(consultation.appointmentId, {
+            employeeId: doctorId,
+        });
+    }
+
     const [updated] = await db
         .update(consultations)
         .set({
@@ -257,6 +355,13 @@ export const updateConsultation = async (
             ...(input.consultedAt !== undefined && {
                 consultedAt: input.consultedAt,
             }),
+            ...(input.doctorId !== undefined && {
+                doctorId: input.doctorId,
+            }),
+            ...(appointment?.id &&
+                !consultation.appointmentId && {
+                    appointmentId: appointment.id,
+                }),
             ...(input.consentRequired !== undefined && {
                 consentRequired: input.consentRequired,
             }),
@@ -272,7 +377,7 @@ export const updateConsultation = async (
         .where(eq(consultations.id, consultation.id))
         .returning();
 
-    return updated;
+    return appointment ? { ...updated, appointment } : updated;
 };
 
 export const startConsultation = async (id: string) => {
@@ -317,9 +422,9 @@ export const completeConsultation = async (id: string) => {
             throw new Error("Only in-progress consultations can be completed");
         }
 
-        if (!consultation.diagnosis?.trim()) {
-            throw new Error("Diagnosis is required before completing consultation");
-        }
+        // if (!consultation.diagnosis?.trim()) {
+        //     throw new Error("Diagnosis is required before completing consultation");
+        // }
 
         if (consultation.consentRequired && !consultation.consentSigned) {
             throw new Error("Consent required before completion");
