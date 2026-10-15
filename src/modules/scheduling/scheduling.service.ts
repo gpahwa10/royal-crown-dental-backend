@@ -425,7 +425,7 @@ export const assertAppointmentScheduleValid = async (input: {
 
     const overlapFilters = [
         eq(appointments.employeeId, input.employeeId),
-        notInArray(appointments.status, ["cancelled", "no_show"]),
+        notInArray(appointments.status, ["cancelled", "no_show", "completed"]),
         input.excludeAppointmentId
             ? ne(appointments.id, input.excludeAppointmentId)
             : undefined,
@@ -554,7 +554,11 @@ export const listAvailableDoctors = async (input: {
                     appointments.employeeId,
                     doctors.map((d) => d.id)
                 ),
-                notInArray(appointments.status, ["cancelled", "no_show"])
+                notInArray(appointments.status, [
+                    "cancelled",
+                    "no_show",
+                    "completed",
+                ])
             )
         );
 

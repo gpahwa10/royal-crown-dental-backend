@@ -701,11 +701,15 @@ export const updateAppointment = async (
     const durationMinutes =
         appointment.durationMinutes ?? DEFAULT_APPOINTMENT_DURATION_MINUTES;
 
-    if (
-        hasScheduleInput ||
-        input.employeeId !== undefined ||
-        input.clinicId !== undefined
-    ) {
+    const scheduleChanged =
+        (scheduledAt !== undefined &&
+            scheduledAt.getTime() !== appointment.scheduledAt.getTime()) ||
+        (input.employeeId !== undefined &&
+            input.employeeId !== appointment.employeeId) ||
+        (input.clinicId !== undefined &&
+            input.clinicId !== appointment.clinicId);
+
+    if (scheduleChanged) {
         await assertAppointmentScheduleValid({
             clinicId,
             employeeId: nextEmployeeId,

@@ -24,8 +24,10 @@ import {
 } from "../odontograms/odontograms.service";
 import {
     createAppointment,
+    getAppointmentById,
     updateAppointment,
 } from "../appointments/appointments.service";
+import { wallClockPartsInTz } from "../scheduling/scheduling.utils";
 import { generateConsultationCode } from "./consultations.utils";
 
 export interface CreateConsultationInput {
@@ -185,6 +187,28 @@ const bookConsultationSlot = async (input: {
     }
 
     if (input.existingAppointmentId) {
+        const existingAppointment = await getAppointmentById(
+            input.existingAppointmentId
+        );
+        const parts = wallClockPartsInTz(existingAppointment.scheduledAt);
+        const slotChanged =
+            parts.date !== input.appointmentDate ||
+            parts.time !== input.appointmentTime ||
+            (Boolean(input.doctorId) &&
+                existingAppointment.employeeId !== input.doctorId);
+
+        if (!slotChanged) {
+            if (
+                input.symptoms !== undefined &&
+                input.symptoms !== existingAppointment.symptoms
+            ) {
+                return updateAppointment(input.existingAppointmentId, {
+                    symptoms: input.symptoms,
+                });
+            }
+            return existingAppointment;
+        }
+
         return updateAppointment(input.existingAppointmentId, {
             employeeId: input.doctorId,
             appointmentDate: input.appointmentDate,
@@ -222,11 +246,12 @@ export const createConsultation = async (input: CreateConsultationInput) => {
         throw new Error("Patient does not belong to the selected clinic");
     }
 
+    const markCompleted = input.markCompleted === true;
+
     const [consultation] = await db.transaction(async (tx) => {
         const consultationCode = await generateConsultationCode(tx);
 
         const consultedAt = input.consultedAt ?? new Date();
-        const markCompleted = input.markCompleted === true;
 
         const [created] = await tx
             .insert(consultations)
@@ -250,6 +275,15 @@ export const createConsultation = async (input: CreateConsultationInput) => {
     });
 
     if (input.appointmentId || !input.appointmentDate || !input.appointmentTime) {
+        if (markCompleted && input.appointmentId) {
+            await db
+                .update(appointments)
+                .set({
+                    status: "completed",
+                    updatedAt: new Date(),
+                })
+                .where(eq(appointments.id, input.appointmentId));
+        }
         return consultation;
     }
 
@@ -261,6 +295,16 @@ export const createConsultation = async (input: CreateConsultationInput) => {
         appointmentTime: input.appointmentTime,
         symptoms: input.chiefComplaint,
     });
+
+    if (markCompleted && appointment?.id) {
+        await db
+            .update(appointments)
+            .set({
+                status: "completed",
+                updatedAt: new Date(),
+            })
+            .where(eq(appointments.id, appointment.id));
+    }
 
     const [linked] = await db
         .update(consultations)
@@ -309,25 +353,57 @@ export const updateConsultation = async (
 
     const doctorId = input.doctorId ?? consultation.doctorId;
     const slotRequested = Boolean(input.appointmentDate && input.appointmentTime);
-    const appointment = slotRequested
-        ? await bookConsultationSlot({
-              clinicId: consultation.clinicId,
-              patientId: consultation.patientId,
-              doctorId,
-              appointmentDate: input.appointmentDate,
-              appointmentTime: input.appointmentTime,
-              symptoms: input.chiefComplaint ?? consultation.chiefComplaint,
-              existingAppointmentId: consultation.appointmentId,
-          })
-        : null;
+    let appointment: any = null;
 
-    if (
-        input.doctorId &&
-        consultation.appointmentId &&
-        !slotRequested
-    ) {
-        await updateAppointment(consultation.appointmentId, {
-            employeeId: doctorId,
+    if (consultation.appointmentId) {
+        const existingAppointment = await getAppointmentById(
+            consultation.appointmentId
+        );
+        const existingWallClock = wallClockPartsInTz(
+            existingAppointment.scheduledAt
+        );
+
+        const slotChanged =
+            slotRequested &&
+            (input.appointmentDate !== existingWallClock.date ||
+                input.appointmentTime !== existingWallClock.time);
+
+        const doctorChanged =
+            Boolean(input.doctorId) &&
+            input.doctorId !== existingAppointment.employeeId;
+
+        if (slotChanged || doctorChanged) {
+            appointment = await updateAppointment(consultation.appointmentId, {
+                ...(slotChanged && {
+                    appointmentDate: input.appointmentDate,
+                    appointmentTime: input.appointmentTime,
+                }),
+                ...(doctorChanged && {
+                    employeeId: doctorId,
+                }),
+                ...(input.chiefComplaint !== undefined && {
+                    symptoms: input.chiefComplaint,
+                }),
+            });
+        } else if (
+            input.chiefComplaint !== undefined &&
+            input.chiefComplaint !== existingAppointment.symptoms
+        ) {
+            appointment = await updateAppointment(consultation.appointmentId, {
+                symptoms: input.chiefComplaint,
+            });
+        } else if (slotRequested) {
+            appointment = existingAppointment;
+        }
+    } else if (slotRequested) {
+        appointment = await bookConsultationSlot({
+            clinicId: consultation.clinicId,
+            patientId: consultation.patientId,
+            doctorId,
+            appointmentDate: input.appointmentDate,
+            appointmentTime: input.appointmentTime,
+            symptoms: input.chiefComplaint ?? consultation.chiefComplaint,
+            existingAppointmentId: null,
         });
     }
 
@@ -418,6 +494,10 @@ export const completeConsultation = async (id: string) => {
             throw new Error("Consultation not found");
         }
 
+        if (consultation.status === "completed") {
+            return consultation;
+        }
+
         if (consultation.status !== "in_progress") {
             throw new Error("Only in-progress consultations can be completed");
         }
@@ -452,6 +532,24 @@ export const completeConsultation = async (id: string) => {
                 updatedAt: new Date(),
             })
             .where(eq(clinicVisits.consultationId, consultation.id));
+
+        if (consultation.appointmentId) {
+            await tx
+                .update(appointments)
+                .set({
+                    status: "completed",
+                    updatedAt: new Date(),
+                })
+                .where(eq(appointments.id, consultation.appointmentId));
+
+            await tx
+                .update(clinicVisits)
+                .set({
+                    outcome: "consultation_completed",
+                    updatedAt: new Date(),
+                })
+                .where(eq(clinicVisits.appointmentId, consultation.appointmentId));
+        }
 
         return updated;
     });

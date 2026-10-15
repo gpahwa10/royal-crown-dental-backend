@@ -413,7 +413,9 @@ describe("Odontogram Service & Cumulative Patient Chart Tests", () => {
                 patientId: patientId,
                 doctorId: doctorId,
                 chiefComplaint: "Rollback test",
-                diagnosis: "", // Missing diagnosis will fail completion
+                diagnosis: "Diagnosis present",
+                consentRequired: true,
+                consentSigned: false,
                 status: "in_progress",
             })
             .returning();
@@ -429,9 +431,9 @@ describe("Odontogram Service & Cumulative Patient Chart Tests", () => {
 
         const currentPatientChartBefore = await getPatientCurrentOdontogram(patientId, testClinicId);
 
-        // Attempting to complete without diagnosis must fail and rollback
+        // Attempting to complete without required consent must fail and rollback
         await expect(completeConsultation(cRollback.id)).rejects.toThrow(
-            "Diagnosis is required before completing consultation"
+            "Consent required before completion"
         );
 
         const currentPatientChartAfter = await getPatientCurrentOdontogram(patientId, testClinicId);
