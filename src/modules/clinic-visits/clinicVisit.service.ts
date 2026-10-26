@@ -609,9 +609,12 @@ export const registerPatientFromVisit = async (
         throw new Error("Patient already registered for this visit");
     }
 
+    const doctorId = input.doctorId ?? visit.doctorId ?? undefined;
+
     const registration = await registerPatient({
         ...input,
         clinicId: visit.clinicId,
+        doctorId,
         name: input.name ?? visit.visitorName,
         phone: input.phone ?? visit.visitorPhone,
         email: input.email ?? visit.visitorEmail ?? undefined,
@@ -621,6 +624,7 @@ export const registerPatientFromVisit = async (
         .update(clinicVisits)
         .set({
             patientId: registration.patient.id,
+            ...(doctorId ? { doctorId } : {}),
             isRegistered: true,
             outcome: "patient_registered",
             status: visit.status === "checked_in" ? "in_progress" : visit.status,

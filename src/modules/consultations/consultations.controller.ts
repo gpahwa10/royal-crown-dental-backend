@@ -3,6 +3,9 @@ import { AuthRequest } from "../../middleware/auth.middleware";
 import {
     canAccessConsultationPatientList,
     hasPlatformAdminAccess,
+    normalizeRoleName,
+    ROLE_ASSISTANT,
+    ROLE_RECEPTION,
 } from "../auth/auth.constants";
 import { getPatientDetails, listPatients } from "../patients/patients.service";
 import { patientListQuerySchema } from "../patients/patients.validation";
@@ -128,10 +131,16 @@ export const updateConsultationHandler = async (
             req.clinicId
         );
 
+        const roles = (req.employee?.roles ?? []).map(normalizeRoleName);
+        const canAssignDoctor =
+            hasPlatformAdminAccess(req.employee) ||
+            roles.includes(ROLE_RECEPTION) ||
+            roles.includes(ROLE_ASSISTANT);
+
         if (
             body.doctorId &&
             body.doctorId !== existing.consultation.doctorId &&
-            !hasPlatformAdminAccess(req.employee)
+            !canAssignDoctor
         ) {
             return res.status(403).json({
                 success: false,

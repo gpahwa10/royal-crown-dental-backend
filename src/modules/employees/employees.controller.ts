@@ -101,8 +101,8 @@ export const listEmployeesHandler = async (req: AuthRequest, res: Response) => {
 
         const result = await listEmployees({
             clinicId,
-            page: query.page,
-            limit: query.limit,
+            page: isDoctorSelectOnly ? 1 : query.page,
+            limit: isDoctorSelectOnly ? 100 : query.limit,
             role: isDoctorSelectOnly ? ROLE_DOCTOR : query.role,
             status: isDoctorSelectOnly ? "active" : query.status,
         });

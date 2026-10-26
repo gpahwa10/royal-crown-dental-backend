@@ -190,17 +190,6 @@ const assertClinicExists = async (clinicId: string) => {
     }
 };
 
-const assertDuplicatePhone = async (phone: string, clinicId: string) => {
-    const [existing] = await db
-        .select({ id: patients.id })
-        .from(patients)
-        .where(and(eq(patients.phone, phone), eq(patients.clinicId, clinicId)));
-
-    if (existing) {
-        throw new Error("A patient with this phone already exists in this clinic");
-    }
-};
-
 const findPatientByPhoneInClinic = async (phone: string, clinicId: string) => {
     const [existing] = await db
         .select({
@@ -328,7 +317,6 @@ const buildTimeline = (
 
 export const registerPatient = async (input: RegisterPatientInput) => {
     await assertClinicExists(input.clinicId);
-    await assertDuplicatePhone(input.phone, input.clinicId);
     if (input.doctorId) {
         await assertDoctorInClinic(input.doctorId, input.clinicId);
     }
@@ -691,10 +679,6 @@ export const updatePatientBasicDetails = async (
     input: UpdatePatientBasicDetailsInput
 ) => {
     const patient = await getPatientRecord(id);
-
-    if (input.phone && input.phone !== patient.phone) {
-        await assertDuplicatePhone(input.phone, patient.clinicId);
-    }
 
     if (input.email && input.email !== patient.email) {
         const [existingEmail] = await db

@@ -85,6 +85,7 @@ export const registerPatientFromVisitSchema = z
         patientType: z.enum(PATIENT_TYPES).default("new"),
         name: z.string().trim().min(1).optional(),
         phone: z.string().trim().min(1).max(20).optional(),
+        doctorId: z.uuid().optional(),
         email: optionalEmail,
         gender: z.string().trim().min(1).max(50),
         dateOfBirth: z.coerce.date(),

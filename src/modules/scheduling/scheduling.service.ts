@@ -1,6 +1,5 @@
-import { and, eq, inArray, ne, notInArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "../../db/client";
-import { appointments } from "../../db/schema/appointments";
 import { clinicWorkingHours } from "../../db/schema/clinicWorkingHours";
 import { clinics } from "../../db/schema/clinic";
 import { employeeRoleAssignments } from "../../db/schema/employeeRoleAssignments";
@@ -17,7 +16,6 @@ import {
     assertHHmm,
     isRangeWithinWindow,
     normalizeHHmm,
-    rangesOverlap,
     wallClockPartsInTz,
 } from "./scheduling.utils";
 
@@ -418,46 +416,6 @@ export const assertAppointmentScheduleValid = async (input: {
     ) {
         throw new Error("Doctor is not available at the selected time");
     }
-
-    const appointmentEnd = new Date(
-        input.scheduledAt.getTime() + duration * 60_000
-    );
-
-    const overlapFilters = [
-        eq(appointments.employeeId, input.employeeId),
-        notInArray(appointments.status, ["cancelled", "no_show", "completed"]),
-        input.excludeAppointmentId
-            ? ne(appointments.id, input.excludeAppointmentId)
-            : undefined,
-    ].filter((f): f is NonNullable<typeof f> => Boolean(f));
-
-    const existing = await db
-        .select({
-            id: appointments.id,
-            scheduledAt: appointments.scheduledAt,
-            durationMinutes: appointments.durationMinutes,
-            status: appointments.status,
-        })
-        .from(appointments)
-        .where(and(...overlapFilters));
-
-    for (const row of existing) {
-        const otherEnd = new Date(
-            row.scheduledAt.getTime() +
-                (row.durationMinutes ?? DEFAULT_APPOINTMENT_DURATION_MINUTES) *
-                    60_000
-        );
-        if (
-            rangesOverlap(
-                input.scheduledAt,
-                appointmentEnd,
-                row.scheduledAt,
-                otherEnd
-            )
-        ) {
-            throw new Error("Doctor already has an overlapping appointment");
-        }
-    }
 };
 
 export const listAvailableDoctors = async (input: {
@@ -536,32 +494,6 @@ export const listAvailableDoctors = async (input: {
         doctors.map((d) => d.id)
     );
 
-    const appointmentEnd = new Date(
-        scheduledAt.getTime() + duration * 60_000
-    );
-
-    const busyRows = await db
-        .select({
-            employeeId: appointments.employeeId,
-            scheduledAt: appointments.scheduledAt,
-            durationMinutes: appointments.durationMinutes,
-        })
-        .from(appointments)
-        .where(
-            and(
-                eq(appointments.clinicId, input.clinicId),
-                inArray(
-                    appointments.employeeId,
-                    doctors.map((d) => d.id)
-                ),
-                notInArray(appointments.status, [
-                    "cancelled",
-                    "no_show",
-                    "completed",
-                ])
-            )
-        );
-
     const available = [];
 
     for (const doctor of doctors) {
@@ -584,27 +516,7 @@ export const listAvailableDoctors = async (input: {
             continue;
         }
 
-        const overlaps = busyRows.some((row) => {
-            if (row.employeeId !== doctor.id) {
-                return false;
-            }
-            const otherEnd = new Date(
-                row.scheduledAt.getTime() +
-                    (row.durationMinutes ??
-                        DEFAULT_APPOINTMENT_DURATION_MINUTES) *
-                        60_000
-            );
-            return rangesOverlap(
-                scheduledAt,
-                appointmentEnd,
-                row.scheduledAt,
-                otherEnd
-            );
-        });
-
-        if (!overlaps) {
-            available.push(doctor);
-        }
+        available.push(doctor);
     }
 
     return available;

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { registerPatientFromVisitSchema } from "../clinic-visits/clinicVisit.validation";
 import {
     createPatientSchema,
     updatePatientBasicDetailsSchema,
@@ -29,6 +30,20 @@ describe("patient update doctor assignment validation", () => {
             name: "Patient One",
             phone: "9999999999",
             email: "patient1@example.com",
+            doctorId,
+            gender: "Male",
+            dateOfBirth: "1990-01-01",
+            treatmentConsentSigned: true,
+            privacyAccepted: true,
+        });
+
+        expect(parsed.doctorId).toBe(doctorId);
+    });
+
+    it("accepts doctorId when registering a patient from a clinic visit", () => {
+        const parsed = registerPatientFromVisitSchema.parse({
+            name: "Patient One",
+            phone: "9999999999",
             doctorId,
             gender: "Male",
             dateOfBirth: "1990-01-01",
