@@ -69,6 +69,16 @@ export const getPagination = (page?: number, limit?: number) => {
     };
 };
 
+/** Last 9 digits are the same mobile with or without a country code or leading 0. */
+export const nationalMobileSuffix = (value: string) => {
+    const digits = value.replace(/\D/g, "");
+    if (digits.length < 9) {
+        return null;
+    }
+
+    return digits.slice(-9);
+};
+
 export const toDate = (value?: Date | string | null) => {
     if (value === undefined || value === null) {
         return undefined;

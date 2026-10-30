@@ -7,6 +7,7 @@ import {
     ilike,
     inArray,
     or,
+    sql,
 } from "drizzle-orm";
 import { db } from "../../db/client";
 import { appointments } from "../../db/schema/appointments";
@@ -76,6 +77,7 @@ import {
     assertPatientClinicAccess,
     generatePatientCode,
     getPagination,
+    nationalMobileSuffix,
     normalizeBulkPatientRow,
     toDate,
 } from "./patients.utils";
@@ -565,14 +567,27 @@ export const listPatients = async (options: ListPatientsOptions) => {
 
     if (options.search) {
         const term = `%${options.search}%`;
-        filters.push(
-            or(
-                ilike(patients.patientCode, term),
-                ilike(patients.name, term),
-                ilike(patients.phone, term),
-                ilike(patients.email, term)
-            )!
-        );
+        const digits = options.search.replace(/\D/g, "");
+        const nationalSuffix = nationalMobileSuffix(options.search);
+        const phoneDigits = sql`regexp_replace(${patients.phone}, '[^0-9]', '', 'g')`;
+        const searchFilters = [
+            ilike(patients.patientCode, term),
+            ilike(patients.name, term),
+            ilike(patients.phone, term),
+            ilike(patients.email, term),
+        ];
+
+        if (digits.length >= 7) {
+            searchFilters.push(sql`${phoneDigits} like ${`%${digits}%`}`);
+        }
+
+        if (nationalSuffix) {
+            searchFilters.push(
+                sql`right(${phoneDigits}, 9) = ${nationalSuffix}`
+            );
+        }
+
+        filters.push(or(...searchFilters)!);
     }
 
     const whereClause = filters.length > 0 ? and(...filters) : undefined;
